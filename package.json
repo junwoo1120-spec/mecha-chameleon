@@ -1,0 +1,9 @@
+{
+  "name": "mecha-chameleon",
+  "version": "1.0.0",
+  "description": "백룸 3D 메카 카멜레온 술래잡기 (Socket.io)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "express": "^4.19.2", "socket.io": "^4.7.5" }
+}
