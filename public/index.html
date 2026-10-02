@@ -19,7 +19,14 @@ canvas{display:block;width:100%;height:100%}
 button{font:inherit;cursor:pointer;border:1px solid #6b5f24;background:#3a3312;color:#f4efc8;padding:8px 12px;border-radius:5px}
 button:hover{background:#4c4318}button.on{background:#c9b94a;color:#1a1608;border-color:#c9b94a}
 button:disabled{opacity:.4;cursor:default}
-#startBtn{position:fixed;z-index:7;bottom:50px;left:50%;transform:translateX(-50%);font-size:20px;padding:12px 28px}
+#lobby{position:fixed;z-index:7;left:20px;top:20px;bottom:20px;width:330px;background:#1a1608ee;border:1px solid #6b5f24;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+#lobby h1{margin:0;font-size:24px}#rules{white-space:pre-line;font-size:14px;opacity:.85}
+#lobbyList{flex:1;min-height:60px;overflow:auto;line-height:1.8;font-size:15px;border-top:1px solid #4a4219;border-bottom:1px solid #4a4219;padding:8px 0}
+#startBtn{font-size:19px;padding:12px}
+#dev{border:1px dashed #e8a24a;border-radius:6px;padding:8px;font-size:13px;line-height:2}
+#dev button{padding:2px 8px}
+#poseBar{position:fixed;z-index:9;bottom:44px;left:50%;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+#poseBar button{padding:6px 10px;font-size:13px}
 #paintBtn{position:fixed;z-index:7;bottom:10px;right:10px}
 #panel{position:fixed;z-index:8;top:50%;right:12px;transform:translateY(-50%);width:230px;background:#1a1608ee;border:1px solid #6b5f24;border-radius:8px;padding:12px;font-size:14px}
 #panel h3{margin:0 0 8px;font-size:15px}
@@ -43,12 +50,23 @@ button:disabled{opacity:.4;cursor:default}
 <div id="roster" class="ui"></div>
 <div id="cross" class="ui" hidden>+</div>
 <div id="toast" class="ui"></div>
-<div id="help" class="ui">WASD 이동 · 화면 클릭 → 마우스 시점 · E 꾸미기 · 술래: 클릭으로 잡기</div>
-<button id="startBtn" hidden>게임 시작</button>
+<div id="help" class="ui">WASD 이동 · Shift 시점 잠금 켜기/끄기 · R 포즈(숫자키) · E 꾸미기 · 술래: 클릭으로 잡기</div>
+<div id="lobby" hidden>
+  <h1>🦎 메챠 카멜레온</h1>
+  <div id="rules"></div>
+  <div id="lobbyList"></div>
+  <button id="startBtn">게임 시작</button>
+  <button id="lobbyPaint">🎨 캐릭터 꾸미기</button>
+  <div class="small">R: 포즈 바꾸기 (숫자키 1~8, 0은 기본)</div>
+  <div id="dev" hidden><b>개발자 테스트</b><br>
+    숨는 시간 <button data-k="hide" data-d="-10">-10</button> <span id="devHide"></span> <button data-k="hide" data-d="10">+10</button><br>
+    찾는 시간 <button data-k="seek" data-d="-10">-10</button> <span id="devSeek"></span> <button data-k="seek" data-d="10">+10</button>
+  </div>
+</div>
+<div id="poseBar" hidden></div>
 <button id="paintBtn">🎨 꾸미기 (E)</button>
 <div id="panel" hidden>
   <h3>꾸미기</h3>
-  <div class="row pose" id="poses"></div>
   <div id="msgLock">지금은 색을 칠할 수 없어요 (포즈는 가능)</div>
   <div class="tool">
     <div class="row"><label>색 <input type="color" id="color" value="#d9c86a"></label>
@@ -86,40 +104,47 @@ const POSES={
   kneel:{n:'꿇어앉기',v:P({ll:[-80,-3,160],lr:[-80,3,160],y:-.8,al:[-25,-8,0,0],ar:[-25,8,0,0]})},
 };
 
-/* ---------- 아바타 (흰 피규어 스타일) ---------- */
-function capsuleGeo(r,total){
-  const h=(total-2*r)/2,pts=[];
-  for(let i=0;i<=8;i++){const a=-Math.PI/2+i*(Math.PI/2)/8;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),-h+r*Math.sin(a)));}
-  for(let i=1;i<=8;i++){const a=i*(Math.PI/2)/8;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),h+r*Math.sin(a)));}
+/* ---------- 아바타 (흰 피규어 스타일, 팔다리는 뼈대로 매끄럽게 휘어짐) ---------- */
+function capsuleGeo(r,total,mid=0){
+  const h=(total-2*r)/2,pts=[],S=8;
+  for(let i=0;i<=S;i++){const a=-Math.PI/2+i*(Math.PI/2)/S;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),-h+r*Math.sin(a)));}
+  for(let k=1;k<=mid;k++)pts.push(new THREE.Vector2(r,-h+2*h*k/(mid+1)));
+  for(let i=0;i<=S;i++){const a=i*(Math.PI/2)/S;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),h+r*Math.sin(a)));}
   return new THREE.LatheGeometry(pts,16);
 }
-function makeFace(){
+function makeFace(skin){
   const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
   g.fillStyle=BASE;g.fillRect(0,0,128,128);
   const t=new THREE.CanvasTexture(c);
-  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide})};
+  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide,skinning:!!skin})};
 }
 function buildAvatar(){
   const root=new THREE.Group(),rig=new THREE.Group();root.add(rig);root.scale.setScalar(0.72);
   const av={root,rig,piv:{},faces:{},meshes:[],cur:POSES.stand.v.slice(),target:'stand'};
-  const seg=(name,i,geo,pos,sc)=>{
-    (av.faces[name]=av.faces[name]||[])[i]=null;
-    const f=makeFace();av.faces[name][i]=f;
-    const m=new THREE.Mesh(geo,f.m);m.position.set(...pos);if(sc)m.scale.set(...sc);
-    m.userData.part=name;m.userData.seg=i;av.meshes.push(m);return m;};
   const grp=(parent,name,pos)=>{const g=new THREE.Group();g.position.set(...pos);parent.add(g);av.piv[name]=g;return g;};
-  [['L',-.2],['R',.2]].forEach(([s,x])=>{
-    const hip=grp(rig,'hip'+s,[x,1,0]);hip.add(seg('leg'+s,0,capsuleGeo(.2,.8),[0,-.2,0]));
-    const kn=grp(hip,'kn'+s,[0,-.4,0]);kn.add(seg('leg'+s,1,capsuleGeo(.2,.8),[0,-.2,0]));
-  });
+  const solid=(name,geo,pos,sc)=>{
+    const f=makeFace(false);av.faces[name]=[f];
+    const m=new THREE.Mesh(geo,f.m);m.position.set(...pos);if(sc)m.scale.set(...sc);
+    m.userData.part=name;m.userData.seg=0;av.meshes.push(m);return m;};
+  // 한 덩어리 팔/다리: 윗뼈(어깨·엉덩이) + 아랫뼈(팔꿈치·무릎)가 중간에서 부드럽게 섞임
+  const limb=(name,r,parent)=>{
+    const geo=capsuleGeo(r,.8+2*r,14);geo.translate(0,-.4,0);
+    const ps=geo.attributes.position,n=ps.count,si=new Uint16Array(n*4),sw=new Float32Array(n*4);
+    for(let i=0;i<n;i++){let w=Math.min(1,Math.max(0,(-.2-ps.getY(i))/.4));w=w*w*(3-2*w);sw[i*4]=1-w;sw[i*4+1]=w;si[i*4+1]=1;}
+    geo.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(si,4));
+    geo.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4));
+    const f=makeFace(true);av.faces[name]=[f];
+    const m=new THREE.SkinnedMesh(geo,f.m);m.frustumCulled=false;
+    m.userData.part=name;m.userData.seg=0;av.meshes.push(m);
+    const b0=new THREE.Bone(),b1=new THREE.Bone();b1.position.y=-.4;b0.add(b1);m.add(b0);
+    parent.add(m);m.bind(new THREE.Skeleton([b0,b1]));
+    return b1;};
+  [['L',-.2],['R',.2]].forEach(([k,x])=>{const hip=grp(rig,'hip'+k,[x,1,0]);av.piv['kn'+k]=limb('leg'+k,.2,hip);});
   const torso=grp(rig,'torso',[0,1,0]);
-  torso.add(seg('body',0,capsuleGeo(.36,1.0),[0,.45,0],[1.15,1,.85]));
-  [['L',-.45],['R',.45]].forEach(([s,x])=>{
-    const sh=grp(torso,'sh'+s,[x,.85,0]);sh.add(seg('arm'+s,0,capsuleGeo(.15,.7),[0,-.2,0]));
-    const el=grp(sh,'el'+s,[0,-.4,0]);el.add(seg('arm'+s,1,capsuleGeo(.15,.7),[0,-.2,0]));
-  });
+  torso.add(solid('body',capsuleGeo(.36,1.0),[0,.45,0],[1.15,1,.85]));
+  [['L',-.45],['R',.45]].forEach(([k,x])=>{const sh=grp(torso,'sh'+k,[x,.85,0]);av.piv['el'+k]=limb('arm'+k,.15,sh);});
   const head=grp(torso,'head',[0,.95,0]);
-  head.add(seg('head',0,new THREE.SphereGeometry(.38,16,12),[0,.22,0]));
+  head.add(solid('head',new THREE.SphereGeometry(.38,16,12),[0,.22,0]));
   av.beacon=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0xff2a2a}));
   av.beacon.position.y=3.1;av.beacon.visible=false;root.add(av.beacon);
   return av;
@@ -202,13 +227,15 @@ function buildWorld(seed){
 
 /* ---------- 상태 ---------- */
 const me={id:null,x:0,z:0,ry:0,yaw:0,pitch:.35,pose:'stand',role:'hider',found:false};
-let phase='lobby',left=0,seekerId=null,avMe=null,joined=false,rosterList=[];
+let phase='lobby',left=0,seekerId=null,avMe=null,joined=false,rosterList=[],cfg={hide:120,seek:300};
+const kor=s=>s<60?`${s}초`:s%60?`${Math.floor(s/60)}분 ${s%60}초`:`${s/60}분`;
 const others=new Map();
 let paintMode=false,pYaw=.6,pDist=5,color='#d9c86a',size=12,mode='brush',stroke=null;
 const dirty=new Set(),keys={};
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
 
 const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
+const lobbyUI=()=>joined&&phase==='lobby'&&!paintMode;
 const canPaint=()=>phase==='lobby'||phase==='ended'||(phase==='hiding'&&me.role!=='seeker');
 const blind=()=>phase==='hiding'&&me.role==='seeker';
 
@@ -237,10 +264,14 @@ function renderHud(){
   rosterList.forEach(p=>{const l=document.createElement('div');
     l.textContent=(p.role==='seeker'?'🔴 ':p.found?'✔ ':p.role==='spectator'?'👁 ':(phase==='lobby'&&p.ready?'✅ ':'🦎 '))+p.nick+(p.id===me.id?' (나)':'');
     if(p.found)l.style.opacity=.5;r.appendChild(l);});
-  const sb=$('startBtn'),rc=rosterList.filter(p=>p.ready).length,mine=rosterList.find(p=>p.id===me.id);
-  sb.hidden=!(joined&&phase==='lobby');sb.disabled=rosterList.length<2;
-  sb.textContent=rosterList.length<2?'게임 시작 (2명 이상 필요)':`게임 시작 ${rc}/${rosterList.length}`;
+  const sb=$('startBtn'),n=rosterList.length,rc=rosterList.filter(p=>p.ready).length,mine=rosterList.find(p=>p.id===me.id);
+  $('lobby').hidden=!lobbyUI();$('roster').hidden=lobbyUI();
+  sb.disabled=n<2;sb.textContent=n<2?'게임 시작 (2명 이상 필요)':`게임 시작 ${rc}/${n}`;
   sb.classList.toggle('on',!!(mine&&mine.ready));
+  $('rules').textContent=`숨기 ${kor(cfg.hide)} → 찾기 ${kor(cfg.seek)}\n모두 시작에 동의하면 술래 1명이 랜덤으로 정해져요`;
+  const ll=$('lobbyList');ll.textContent='';
+  rosterList.forEach(p=>{const d=document.createElement('div');d.textContent=(p.ready?'✅ ':'⬜ ')+p.nick+(p.id===me.id?' (나)':'');ll.appendChild(d);});
+  $('dev').hidden=!(mine&&mine.nick==='박준우');$('devHide').textContent=cfg.hide+'초';$('devSeek').textContent=cfg.seek+'초';
   $('blind').hidden=!blind();
   $('panel').classList.toggle('lock',!canPaint());
 }
@@ -250,11 +281,11 @@ function setPaint(on){
   if(on&&document.pointerLockElement)document.exitPointerLock();
   renderHud();
 }
-function setPose(n){if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poses').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
+function setPose(n){if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poseBar').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
 
 /* ---------- 소켓 ---------- */
 socket.on('welcome',d=>{
-  me.id=d.id;buildWorld(d.seed);avMe=buildAvatar();scene.add(avMe.root);
+  cfg=d.cfg||cfg;me.id=d.id;buildWorld(d.seed);avMe=buildAvatar();scene.add(avMe.root);
   d.players.forEach(p=>{if(p.id!==me.id)addOther(p);else me.role=p.role;});
   phase=d.phase;left=d.left;seekerId=d.seekerId;rosterList=d.players.map(p=>({id:p.id,nick:p.nick,role:p.role,found:p.found,ready:p.ready}));
   spawn();joined=true;$('login').hidden=true;renderHud();
@@ -277,6 +308,7 @@ socket.on('phase',d=>{
   if(d.msg)toast(d.msg,d.phase==='ended'?8000:4000);
   renderHud();
 });
+socket.on('cfg',d=>{cfg=d;renderHud();});
 socket.on('tick',d=>{left=d.left;renderHud();});
 socket.on('states',list=>list.forEach(s=>{const o=others.get(s.id);if(o){o.x=s.x;o.z=s.z;o.ry=s.ry;o.pose=s.pose;}}));
 socket.on('tex',d=>{const o=others.get(d.id);if(o)applyFaces(o.av,d.part,d.faces);});
@@ -287,7 +319,11 @@ function enter(){const n=$('nick').value.trim();socket.emit('join',n);}
 $('enter').onclick=enter;$('nick').onkeydown=e=>{if(e.key==='Enter')enter();};
 $('startBtn').onclick=()=>socket.emit('ready');
 $('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(false);
-Object.entries(POSES).filter(([k])=>k!=='stand').forEach(([k,p])=>{const b=document.createElement('button');b.textContent=p.n;b.dataset.k=k;b.onclick=()=>setPose(k);$('poses').appendChild(b);});
+const POSE_KEYS=Object.keys(POSES).filter(k=>k!=='stand');
+[...POSE_KEYS,'stand'].forEach((k,i)=>{const b=document.createElement('button');b.dataset.k=k;
+  b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.onclick=()=>setPose(k);$('poseBar').appendChild(b);});
+$('lobbyPaint').onclick=()=>setPaint(true);
+document.querySelectorAll('#dev button').forEach(b=>b.onclick=()=>socket.emit('dev',{kind:b.dataset.k,delta:+b.dataset.d}));
 setPose('stand');
 $('color').oninput=e=>color=e.target.value;
 $('size').oninput=e=>{size=+e.target.value;$('sizeV').textContent=size;};
@@ -298,6 +334,11 @@ addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'&&e.target.type==='text')return;
   keys[e.code]=true;
   if(e.code==='KeyE'&&joined)setPaint(!paintMode);
+  if(e.code==='KeyR'&&joined&&!e.repeat)$('poseBar').hidden=!$('poseBar').hidden;
+  if(!$('poseBar').hidden){const m=/^(Digit|Numpad)(\d)$/.exec(e.code);
+    if(m){const n=+m[2];if(n===0)setPose('stand');else if(POSE_KEYS[n-1])setPose(POSE_KEYS[n-1]);}}
+  if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat&&joined&&!paintMode&&phase!=='lobby'){
+    if(document.pointerLockElement===canvas)document.exitPointerLock();else canvas.requestPointerLock();}
 });
 addEventListener('keyup',e=>keys[e.code]=false);
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
@@ -308,7 +349,7 @@ document.addEventListener('mousemove',e=>{
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{if(paintMode)pDist=Math.max(2.5,Math.min(9,pDist+e.deltaY*.005));});
 canvas.addEventListener('mousedown',e=>{
-  if(!joined||paintMode)return;
+  if(!joined||paintMode||phase==='lobby')return;
   if(document.pointerLockElement!==canvas){canvas.requestPointerLock();return;}
   if(e.button===0)tryTag();
 });
@@ -348,12 +389,17 @@ canvas.addEventListener('pointerup',()=>{if(paintMode)flush();});
 
 function tryTag(){
   if(phase!=='seeking'||me.role!=='seeker')return;
-  const targets=[];others.forEach(o=>{if(o.role==='hider'&&!o.found)targets.push(...o.av.meshes);});
   ndc.set(0,0);ray.setFromCamera(ndc,camera);
-  const h=ray.intersectObjects([...targets,walls],false)[0];
-  if(!h||!h.object.userData.owner)return;
-  const o=others.get(h.object.userData.owner);
-  if(o&&Math.hypot(o.x-me.x,o.z-me.z)<=6.5)socket.emit('tag',o.id);
+  const wh=ray.intersectObject(walls,false)[0];
+  let best=null,bt=1e9;
+  others.forEach(o=>{
+    if(o.role!=='hider'||o.found)return;
+    const sc=o.av.root.scale.x,c=new THREE.Vector3(o.av.root.position.x,1.1*sc,o.av.root.position.z);
+    const t=c.clone().sub(ray.ray.origin).dot(ray.ray.direction);
+    if(t<0||t>12||(wh&&wh.distance<t))return;
+    if(ray.ray.distanceToPoint(c)<Math.max(.4,1.3*sc)&&t<bt){bt=t;best=o;}
+  });
+  if(best&&Math.hypot(best.x-me.x,best.z-me.z)<=6.5)socket.emit('tag',best.id);
 }
 
 /* ---------- 루프 ---------- */
@@ -369,7 +415,7 @@ function loop(now){
   if(joined){
     const s=paintMode?.72:scaleOf(me.role),rad=.45*s/.72;
     let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0),iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
-    if(!paintMode&&!blind()&&(ix||iz)){
+    if(!paintMode&&!blind()&&phase!=='lobby'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
       const dx=(-sy*iz+cy*ix)*SPEED*dt,dz=(-cy*iz-sy*ix)*SPEED*dt;
@@ -378,8 +424,8 @@ function loop(now){
       me.ry=lerpAngle(me.ry,Math.atan2(dx,dz),1-Math.exp(-14*dt));
     }
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
-    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=me.pose;stepPose(avMe,dt);
-    if(paintMode)camAt(1,pYaw,.15,pDist);else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
+    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
+    if(paintMode)camAt(1,pYaw,.15,pDist);else if(lobbyUI()){pYaw+=dt*.5;camAt(1,pYaw,.15,4.2);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));
