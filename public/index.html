@@ -53,9 +53,9 @@ button:disabled{opacity:.4;cursor:default}
   <div class="tool">
     <div class="row"><label>색 <input type="color" id="color" value="#d9c86a"></label>
       <button id="mBrush" class="on">브러시</button><button id="mFill">채우기</button></div>
-    <div class="row"><label style="flex:1;display:flex;gap:6px;align-items:center">굵기 <input type="range" id="size" min="1" max="24" value="8"><span id="sizeV">8</span></label></div>
+    <div class="row"><label style="flex:1;display:flex;gap:6px;align-items:center">굵기 <input type="range" id="size" min="1" max="40" value="12"><span id="sizeV">12</span></label></div>
   </div>
-  <div class="small">좌클릭: 칠하기 / 채우기(부위 클릭)<br>우클릭 드래그·←→: 회전 · 휠: 확대</div>
+  <div class="small">포즈를 다시 누르면 기본 자세<br>좌클릭: 칠하기 / 채우기(부위 클릭)<br>우클릭 드래그·←→: 회전 · 휠: 확대</div>
   <div class="row" style="margin-top:10px"><button id="closeP" style="flex:1">닫기 (E)</button></div>
 </div>
 <div id="login"><div class="box"><h1>🦎 메챠 카멜레온</h1><p>백룸에서 숨바꼭질</p>
@@ -67,66 +67,80 @@ button:disabled{opacity:.4;cursor:default}
 const $=id=>document.getElementById(id);
 const socket=io();
 const D=Math.PI/180, SPEED=5.5;
-const BASE='#4fae5a';
+const BASE='#f2f2ee';
 
 /* ---------- 포즈 ---------- */
-// [armL x,z, armR x,z, legL x,z, legR x,z, head x, rig y, rig rotX]
-const mk=(a,b,c,d,e,f,g,h,i,y,r)=>[a*D,b*D,c*D,d*D,e*D,f*D,g*D,h*D,i*D,y,r*D];
+// al/ar: [어깨x,어깨z,팔꿈치x,팔꿈치z]  ll/lr: [엉덩이x,엉덩이z,무릎x]  h:고개  t:상체숙임  y,ox:위치  rx,rz:몸 눕힘
+const BASEP={al:[0,-6,0,0],ar:[0,6,0,0],ll:[0,-2,0],lr:[0,2,0]};
+const P=o=>{o={...BASEP,...o};
+  return [...o.al,...o.ar,...o.ll,...o.lr,o.h||0,o.t||0,o.y||0,o.rx||0,o.rz||0,o.ox||0].map((v,i)=>(i===16||i===19)?v:v*D);};
 const POSES={
-  stand:{n:'기본',v:mk(0,-8,0,8,0,-3,0,3,0,0,0)},
-  tpose:{n:'T자',v:mk(0,-90,0,90,0,-3,0,3,0,0,0)},
-  up:{n:'만세',v:mk(0,-170,0,170,0,-3,0,3,-10,0,0)},
-  sit:{n:'앉기',v:mk(-30,-8,-30,8,-90,-5,-90,5,0,-0.72,0)},
-  crouch:{n:'웅크리기',v:mk(-50,-10,-50,10,-60,-8,-60,8,20,-0.45,0)},
-  prone:{n:'엎드리기',v:mk(0,-8,0,8,0,-3,0,3,-60,0.32,90)},
+  stand:{n:'기본',v:P({})},
+  hunch:{n:'숙이기',v:P({t:55,h:15,ll:[-35,-2,45],lr:[-35,2,45],y:-.08,al:[-20,-6,0,0],ar:[-140,0,0,-100]})},
+  flex:{n:'알통',v:P({al:[0,-90,0,-90],ar:[0,90,0,90]})},
+  ring:{n:'머리 위 원',v:P({al:[0,-160,0,-60],ar:[0,160,0,60]})},
+  leg:{n:'한 발 서기',v:P({al:[0,-120,0,0],ar:[0,120,0,0],lr:[-80,2,90]})},
+  star:{n:'별',v:P({al:[0,-150,0,0],ar:[0,150,0,0],ll:[0,-35,0],lr:[0,35,0],y:-.15})},
+  curl:{n:'웅크리기',v:P({ll:[-30,-3,120],lr:[-30,3,120],t:100,al:[-190,-6,0,0],ar:[-190,6,0,0],y:-.45})},
+  side:{n:'옆으로 눕기',v:P({rz:90,y:.68,ox:1,ll:[-20,-2,40],lr:[-35,2,70]})},
+  kneel:{n:'꿇어앉기',v:P({ll:[-80,-3,160],lr:[-80,3,160],y:-.8,al:[-25,-8,0,0],ar:[-25,8,0,0]})},
 };
 
-/* ---------- 아바타 ---------- */
-function makeFaces(){
-  return Array.from({length:6},()=>{
-    const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
-    g.fillStyle=BASE;g.fillRect(0,0,64,64);g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=2;g.strokeRect(1,1,62,62);
-    const t=new THREE.CanvasTexture(c);
-    return {c,g,t,m:new THREE.MeshLambertMaterial({map:t})};
-  });
+/* ---------- 아바타 (흰 피규어 스타일) ---------- */
+function capsuleGeo(r,total){
+  const h=(total-2*r)/2,pts=[];
+  for(let i=0;i<=8;i++){const a=-Math.PI/2+i*(Math.PI/2)/8;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),-h+r*Math.sin(a)));}
+  for(let i=1;i<=8;i++){const a=i*(Math.PI/2)/8;pts.push(new THREE.Vector2(Math.max(r*Math.cos(a),1e-4),h+r*Math.sin(a)));}
+  return new THREE.LatheGeometry(pts,16);
+}
+function makeFace(){
+  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  g.fillStyle=BASE;g.fillRect(0,0,128,128);
+  const t=new THREE.CanvasTexture(c);
+  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide})};
 }
 function buildAvatar(){
   const root=new THREE.Group(),rig=new THREE.Group();root.add(rig);root.scale.setScalar(0.72);
   const av={root,rig,piv:{},faces:{},meshes:[],cur:POSES.stand.v.slice(),target:'stand'};
-  const part=(name,size,pos)=>{
-    const f=makeFaces(),m=new THREE.Mesh(new THREE.BoxGeometry(...size),f.map(x=>x.m));
-    m.position.set(...pos);m.userData.part=name;av.faces[name]=f;av.meshes.push(m);return m;};
-  const pivot=(name,pos,mesh)=>{const g=new THREE.Group();g.position.set(...pos);g.add(mesh);rig.add(g);av.piv[name]=g;return g;};
-  rig.add(part('body',[1,1,.6],[0,1.4,0]));
-  pivot('armL',[-.65,1.8,0],part('armL',[.3,.9,.3],[0,-.4,0]));
-  pivot('armR',[.65,1.8,0],part('armR',[.3,.9,.3],[0,-.4,0]));
-  pivot('legL',[-.25,.9,0],part('legL',[.36,.9,.36],[0,-.45,0]));
-  pivot('legR',[.25,.9,0],part('legR',[.36,.9,.36],[0,-.45,0]));
-  const head=pivot('head',[0,1.9,0],part('head',[.8,.6,.9],[0,.3,.05]));
-  const metal=new THREE.MeshLambertMaterial({color:0x5d636e}),led=new THREE.MeshBasicMaterial({color:0x00e5ff});
-  [-1,1].forEach(s=>{
-    const e=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),metal);e.position.set(s*.45,.45,.1);head.add(e);
-    const p=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),led);p.position.set(s*.58,.45,.24);head.add(p);
+  const seg=(name,i,geo,pos,sc)=>{
+    (av.faces[name]=av.faces[name]||[])[i]=null;
+    const f=makeFace();av.faces[name][i]=f;
+    const m=new THREE.Mesh(geo,f.m);m.position.set(...pos);if(sc)m.scale.set(...sc);
+    m.userData.part=name;m.userData.seg=i;av.meshes.push(m);return m;};
+  const grp=(parent,name,pos)=>{const g=new THREE.Group();g.position.set(...pos);parent.add(g);av.piv[name]=g;return g;};
+  [['L',-.2],['R',.2]].forEach(([s,x])=>{
+    const hip=grp(rig,'hip'+s,[x,1,0]);hip.add(seg('leg'+s,0,capsuleGeo(.2,.8),[0,-.2,0]));
+    const kn=grp(hip,'kn'+s,[0,-.4,0]);kn.add(seg('leg'+s,1,capsuleGeo(.2,.8),[0,-.2,0]));
   });
-  [[.28,1.1,-.55,0],[.22,.95,-.95,-.4],[.16,1.15,-1.25,-.9]].forEach(([s,y,z,r])=>{
-    const t=new THREE.Mesh(new THREE.BoxGeometry(s,s,.5),metal);t.position.set(0,y,z);t.rotation.x=r;rig.add(t);});
+  const torso=grp(rig,'torso',[0,1,0]);
+  torso.add(seg('body',0,capsuleGeo(.36,1.0),[0,.45,0],[1.15,1,.85]));
+  [['L',-.45],['R',.45]].forEach(([s,x])=>{
+    const sh=grp(torso,'sh'+s,[x,.85,0]);sh.add(seg('arm'+s,0,capsuleGeo(.15,.7),[0,-.2,0]));
+    const el=grp(sh,'el'+s,[0,-.4,0]);el.add(seg('arm'+s,1,capsuleGeo(.15,.7),[0,-.2,0]));
+  });
+  const head=grp(torso,'head',[0,.95,0]);
+  head.add(seg('head',0,new THREE.SphereGeometry(.38,16,12),[0,.22,0]));
   av.beacon=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0xff2a2a}));
-  av.beacon.position.y=3.3;av.beacon.visible=false;root.add(av.beacon);
+  av.beacon.position.y=3.1;av.beacon.visible=false;root.add(av.beacon);
   return av;
 }
 function stepPose(av,dt){
   const t=(POSES[av.target]||POSES.stand).v,k=1-Math.exp(-12*dt),c=av.cur,p=av.piv;
-  for(let i=0;i<11;i++)c[i]+=(t[i]-c[i])*k;
-  p.armL.rotation.set(c[0],0,c[1]);p.armR.rotation.set(c[2],0,c[3]);
-  p.legL.rotation.set(c[4],0,c[5]);p.legR.rotation.set(c[6],0,c[7]);
-  p.head.rotation.x=c[8];av.rig.position.y=c[9];av.rig.rotation.x=c[10];
+  for(let i=0;i<20;i++)c[i]+=(t[i]-c[i])*k;
+  p.shL.rotation.set(c[0],0,c[1]);p.elL.rotation.set(c[2],0,c[3]);
+  p.shR.rotation.set(c[4],0,c[5]);p.elR.rotation.set(c[6],0,c[7]);
+  p.hipL.rotation.set(c[8],0,c[9]);p.knL.rotation.x=c[10];
+  p.hipR.rotation.set(c[11],0,c[12]);p.knR.rotation.x=c[13];
+  p.head.rotation.x=c[14];p.torso.rotation.x=c[15];
+  av.rig.position.set(c[19],c[16],0);av.rig.rotation.set(c[17],0,c[18]);
 }
 const serialize=(av,part)=>av.faces[part].map(f=>f.c.toDataURL('image/png'));
 function applyFaces(av,part,faces){
   if(!av.faces[part]||!Array.isArray(faces))return;
-  faces.slice(0,6).forEach((url,i)=>{
-    if(typeof url!=='string'||!url.startsWith('data:image/png;base64,'))return;
-    const img=new Image();img.onload=()=>{const f=av.faces[part][i];f.g.drawImage(img,0,0);f.t.needsUpdate=true;};img.src=url;});
+  faces.slice(0,2).forEach((url,i)=>{
+    const f=av.faces[part][i];
+    if(!f||typeof url!=='string'||!url.startsWith('data:image/png;base64,'))return;
+    const img=new Image();img.onload=()=>{f.g.drawImage(img,0,0);f.t.needsUpdate=true;};img.src=url;});
 }
 function lerpAngle(a,b,k){let d=b-a;d=Math.atan2(Math.sin(d),Math.cos(d));return a+d*k;}
 
@@ -190,10 +204,11 @@ function buildWorld(seed){
 const me={id:null,x:0,z:0,ry:0,yaw:0,pitch:.35,pose:'stand',role:'hider',found:false};
 let phase='lobby',left=0,seekerId=null,avMe=null,joined=false,rosterList=[];
 const others=new Map();
-let paintMode=false,pYaw=.6,pDist=5,color='#d9c86a',size=8,mode='brush',stroke=null;
+let paintMode=false,pYaw=.6,pDist=5,color='#d9c86a',size=12,mode='brush',stroke=null;
 const dirty=new Set(),keys={};
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
 
+const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
 const canPaint=()=>phase==='lobby'||phase==='ended'||(phase==='hiding'&&me.role!=='seeker');
 const blind=()=>phase==='hiding'&&me.role==='seeker';
 
@@ -220,10 +235,12 @@ function renderHud(){
   const m=Math.max(0,left);$('timer').textContent=phase==='lobby'?'':`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;
   const r=$('roster');r.textContent='';
   rosterList.forEach(p=>{const l=document.createElement('div');
-    l.textContent=(p.role==='seeker'?'🔴 ':p.found?'✔ ':p.role==='spectator'?'👁 ':'🦎 ')+p.nick+(p.id===me.id?' (나)':'');
+    l.textContent=(p.role==='seeker'?'🔴 ':p.found?'✔ ':p.role==='spectator'?'👁 ':(phase==='lobby'&&p.ready?'✅ ':'🦎 '))+p.nick+(p.id===me.id?' (나)':'');
     if(p.found)l.style.opacity=.5;r.appendChild(l);});
-  const sb=$('startBtn');sb.hidden=!(joined&&phase==='lobby');sb.disabled=rosterList.length<2;
-  sb.textContent=rosterList.length<2?'게임 시작 (2명 이상 필요)':'게임 시작';
+  const sb=$('startBtn'),rc=rosterList.filter(p=>p.ready).length,mine=rosterList.find(p=>p.id===me.id);
+  sb.hidden=!(joined&&phase==='lobby');sb.disabled=rosterList.length<2;
+  sb.textContent=rosterList.length<2?'게임 시작 (2명 이상 필요)':`게임 시작 ${rc}/${rosterList.length}`;
+  sb.classList.toggle('on',!!(mine&&mine.ready));
   $('blind').hidden=!blind();
   $('panel').classList.toggle('lock',!canPaint());
 }
@@ -233,13 +250,13 @@ function setPaint(on){
   if(on&&document.pointerLockElement)document.exitPointerLock();
   renderHud();
 }
-function setPose(n){me.pose=n;[...$('poses').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
+function setPose(n){if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poses').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
 
 /* ---------- 소켓 ---------- */
 socket.on('welcome',d=>{
   me.id=d.id;buildWorld(d.seed);avMe=buildAvatar();scene.add(avMe.root);
   d.players.forEach(p=>{if(p.id!==me.id)addOther(p);else me.role=p.role;});
-  phase=d.phase;left=d.left;seekerId=d.seekerId;rosterList=d.players.map(p=>({id:p.id,nick:p.nick,role:p.role,found:p.found}));
+  phase=d.phase;left=d.left;seekerId=d.seekerId;rosterList=d.players.map(p=>({id:p.id,nick:p.nick,role:p.role,found:p.found,ready:p.ready}));
   spawn();joined=true;$('login').hidden=true;renderHud();
 });
 socket.on('player-add',p=>addOther(p));
@@ -268,9 +285,9 @@ socket.on('found',d=>{toast(d.id===me.id?'술래에게 들켰어요!':`${d.nick}
 /* ---------- 입력 ---------- */
 function enter(){const n=$('nick').value.trim();socket.emit('join',n);}
 $('enter').onclick=enter;$('nick').onkeydown=e=>{if(e.key==='Enter')enter();};
-$('startBtn').onclick=()=>socket.emit('start');
+$('startBtn').onclick=()=>socket.emit('ready');
 $('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(false);
-Object.entries(POSES).forEach(([k,p])=>{const b=document.createElement('button');b.textContent=p.n;b.dataset.k=k;b.onclick=()=>setPose(k);$('poses').appendChild(b);});
+Object.entries(POSES).filter(([k])=>k!=='stand').forEach(([k,p])=>{const b=document.createElement('button');b.textContent=p.n;b.dataset.k=k;b.onclick=()=>setPose(k);$('poses').appendChild(b);});
 setPose('stand');
 $('color').oninput=e=>color=e.target.value;
 $('size').oninput=e=>{size=+e.target.value;$('sizeV').textContent=size;};
@@ -305,13 +322,13 @@ function pick(e){
 function paintAt(e,start){
   if(!canPaint())return;
   const h=pick(e);if(!h){stroke=null;return;}
-  const part=h.object.userData.part,fi=h.face.materialIndex,f=avMe.faces[part][fi];
+  const part=h.object.userData.part,fi=h.object.userData.seg,f=avMe.faces[part][fi];
   if(mode==='fill'){
     if(!start)return;
-    avMe.faces[part].forEach(q=>{q.g.fillStyle=color;q.g.fillRect(0,0,64,64);q.t.needsUpdate=true;});
+    avMe.faces[part].forEach(q=>{q.g.fillStyle=color;q.g.fillRect(0,0,128,128);q.t.needsUpdate=true;});
     dirty.add(part);flush();return;
   }
-  const x=h.uv.x*64,y=(1-h.uv.y)*64,g=f.g;
+  const x=h.uv.x*128,y=(1-h.uv.y)*128,g=f.g;
   g.fillStyle=g.strokeStyle=color;g.lineCap='round';g.lineWidth=size;
   if(stroke&&stroke.part===part&&stroke.fi===fi){g.beginPath();g.moveTo(stroke.x,stroke.y);g.lineTo(x,y);g.stroke();}
   else{g.beginPath();g.arc(x,y,size/2,0,7);g.fill();}
@@ -350,21 +367,22 @@ let last=performance.now(),lastSend=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(joined){
+    const s=paintMode?.72:scaleOf(me.role),rad=.45*s/.72;
     let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0),iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
     if(!paintMode&&!blind()&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
       const dx=(-sy*iz+cy*ix)*SPEED*dt,dz=(-cy*iz-sy*ix)*SPEED*dt;
-      if(!hitWall(me.x+dx,me.z))me.x+=dx;
-      if(!hitWall(me.x,me.z+dz))me.z+=dz;
+      if(!hitWall(me.x+dx,me.z,rad))me.x+=dx;
+      if(!hitWall(me.x,me.z+dz,rad))me.z+=dz;
       me.ry=lerpAngle(me.ry,Math.atan2(dx,dz),1-Math.exp(-14*dt));
     }
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
-    avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=me.pose;stepPose(avMe,dt);
-    if(paintMode)camAt(1,pYaw,.15,pDist);else camAt(1.4,me.yaw,me.pitch,4);
+    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=me.pose;stepPose(avMe,dt);
+    if(paintMode)camAt(1,pYaw,.15,pDist);else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
-    others.forEach(o=>{const r=o.av.root;
+    others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));
       r.position.x+=(o.x-r.position.x)*k;r.position.z+=(o.z-r.position.z)*k;
       r.rotation.y=lerpAngle(r.rotation.y,o.ry,k);o.av.target=o.pose;stepPose(o.av,dt);});
     if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,ry:me.ry,pose:me.pose});}
