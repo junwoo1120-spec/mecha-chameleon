@@ -1,114 +1,375 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>메챠 카멜레온 · 백룸</title>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:#1a1608;color:#f4efc8;font-family:'Noto Sans KR',system-ui,sans-serif}
+canvas{display:block;width:100%;height:100%}
+.ui{position:fixed;pointer-events:none;z-index:6}
+#hud{top:10px;left:50%;transform:translateX(-50%);text-align:center;text-shadow:0 1px 4px #000}
+#phase{font-size:16px}#timer{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums}
+#roster{top:10px;left:10px;font-size:13px;background:#1a1608bb;padding:8px 12px;border-radius:6px;min-width:140px;line-height:1.6}
+#cross{top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;opacity:.8}
+#toast{bottom:90px;left:50%;transform:translateX(-50%);background:#000c;padding:10px 18px;border-radius:6px;font-size:18px;opacity:0;transition:opacity .3s;text-align:center}
+#toast.on{opacity:1}
+#help{bottom:8px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.75;white-space:nowrap}
+#blind{position:fixed;inset:0;background:#000;z-index:5;display:flex;align-items:center;justify-content:center;font-size:22px;text-align:center}
+button{font:inherit;cursor:pointer;border:1px solid #6b5f24;background:#3a3312;color:#f4efc8;padding:8px 12px;border-radius:5px}
+button:hover{background:#4c4318}button.on{background:#c9b94a;color:#1a1608;border-color:#c9b94a}
+button:disabled{opacity:.4;cursor:default}
+#startBtn{position:fixed;z-index:7;bottom:50px;left:50%;transform:translateX(-50%);font-size:20px;padding:12px 28px}
+#paintBtn{position:fixed;z-index:7;bottom:10px;right:10px}
+#panel{position:fixed;z-index:8;top:50%;right:12px;transform:translateY(-50%);width:230px;background:#1a1608ee;border:1px solid #6b5f24;border-radius:8px;padding:12px;font-size:14px}
+#panel h3{margin:0 0 8px;font-size:15px}
+#panel .row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;align-items:center}
+#panel .row.pose button{flex:1 1 30%;padding:6px 2px;font-size:13px}
+#panel input[type=range]{flex:1}
+#panel input[type=color]{width:44px;height:30px;border:0;background:none;padding:0}
+#panel.lock .tool{opacity:.35;pointer-events:none}
+#msgLock{font-size:12px;color:#e8a24a;display:none;margin-bottom:8px}
+#panel.lock #msgLock{display:block}
+.small{font-size:12px;opacity:.7}
+#login{position:fixed;inset:0;z-index:20;background:#c9b94a;display:flex;align-items:center;justify-content:center}
+#login .box{background:#1a1608;padding:30px 36px;border-radius:8px;text-align:center;width:320px}
+#login h1{margin:0 0 4px;font-size:26px}#login p{margin:0 0 16px;opacity:.7;font-size:14px}
+#login input{width:100%;padding:10px;font:inherit;border-radius:5px;border:1px solid #6b5f24;background:#2b250d;color:#f4efc8;margin-bottom:10px}
+#login button{width:100%;padding:10px;font-size:16px}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="blind" hidden><div>술래는 눈을 감고 기다리는 중…<br><small>숨는 시간이 끝나면 시작해요</small></div></div>
+<div id="hud" class="ui"><div id="phase"></div><div id="timer"></div></div>
+<div id="roster" class="ui"></div>
+<div id="cross" class="ui" hidden>+</div>
+<div id="toast" class="ui"></div>
+<div id="help" class="ui">WASD 이동 · 화면 클릭 → 마우스 시점 · E 꾸미기 · 술래: 클릭으로 잡기</div>
+<button id="startBtn" hidden>게임 시작</button>
+<button id="paintBtn">🎨 꾸미기 (E)</button>
+<div id="panel" hidden>
+  <h3>꾸미기</h3>
+  <div class="row pose" id="poses"></div>
+  <div id="msgLock">지금은 색을 칠할 수 없어요 (포즈는 가능)</div>
+  <div class="tool">
+    <div class="row"><label>색 <input type="color" id="color" value="#d9c86a"></label>
+      <button id="mBrush" class="on">브러시</button><button id="mFill">채우기</button></div>
+    <div class="row"><label style="flex:1;display:flex;gap:6px;align-items:center">굵기 <input type="range" id="size" min="1" max="24" value="8"><span id="sizeV">8</span></label></div>
+  </div>
+  <div class="small">좌클릭: 칠하기 / 채우기(부위 클릭)<br>우클릭 드래그·←→: 회전 · 휠: 확대</div>
+  <div class="row" style="margin-top:10px"><button id="closeP" style="flex:1">닫기 (E)</button></div>
+</div>
+<div id="login"><div class="box"><h1>🦎 메챠 카멜레온</h1><p>백룸에서 숨바꼭질</p>
+<input id="nick" maxlength="12" placeholder="닉네임" autocomplete="off"><button id="enter">입장</button></div></div>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 2e6 });
-app.use(express.static('public'));
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const socket=io();
+const D=Math.PI/180, SPEED=5.5;
+const BASE='#4fae5a';
 
-const HIDE_SEC = 120, SEEK_SEC = 300, END_SEC = 10, MAP_SEED = 1337;
-const PARTS = ['head', 'body', 'armL', 'armR', 'legL', 'legR'];
-const players = {};
-let phase = 'lobby', left = 0, seekerId = null;
+/* ---------- 포즈 ---------- */
+// [armL x,z, armR x,z, legL x,z, legR x,z, head x, rig y, rig rotX]
+const mk=(a,b,c,d,e,f,g,h,i,y,r)=>[a*D,b*D,c*D,d*D,e*D,f*D,g*D,h*D,i*D,y,r*D];
+const POSES={
+  stand:{n:'기본',v:mk(0,-8,0,8,0,-3,0,3,0,0,0)},
+  tpose:{n:'T자',v:mk(0,-90,0,90,0,-3,0,3,0,0,0)},
+  up:{n:'만세',v:mk(0,-170,0,170,0,-3,0,3,-10,0,0)},
+  sit:{n:'앉기',v:mk(-30,-8,-30,8,-90,-5,-90,5,0,-0.72,0)},
+  crouch:{n:'웅크리기',v:mk(-50,-10,-50,10,-60,-8,-60,8,20,-0.45,0)},
+  prone:{n:'엎드리기',v:mk(0,-8,0,8,0,-3,0,3,-60,0.32,90)},
+};
 
-const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found });
-const full = p => ({ ...pub(p), x: p.x, z: p.z, ry: p.ry, pose: p.pose, tex: p.tex });
-const roster = () => io.emit('roster', Object.values(players).map(pub));
-function setPhase(ph, sec, msg) {
-  phase = ph; left = sec;
-  io.emit('phase', { phase, left, seekerId, msg });
-  roster();
+/* ---------- 아바타 ---------- */
+function makeFaces(){
+  return Array.from({length:6},()=>{
+    const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
+    g.fillStyle=BASE;g.fillRect(0,0,64,64);g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=2;g.strokeRect(1,1,62,62);
+    const t=new THREE.CanvasTexture(c);
+    return {c,g,t,m:new THREE.MeshLambertMaterial({map:t})};
+  });
 }
-function endGame(msg) { setPhase('ended', END_SEC, msg); }
-function checkEnd() {
-  if (phase !== 'seeking') return;
-  if (!Object.values(players).some(p => p.role === 'hider' && !p.found)) endGame('술래 승리! 모두 찾았어요');
+function buildAvatar(){
+  const root=new THREE.Group(),rig=new THREE.Group();root.add(rig);root.scale.setScalar(0.72);
+  const av={root,rig,piv:{},faces:{},meshes:[],cur:POSES.stand.v.slice(),target:'stand'};
+  const part=(name,size,pos)=>{
+    const f=makeFaces(),m=new THREE.Mesh(new THREE.BoxGeometry(...size),f.map(x=>x.m));
+    m.position.set(...pos);m.userData.part=name;av.faces[name]=f;av.meshes.push(m);return m;};
+  const pivot=(name,pos,mesh)=>{const g=new THREE.Group();g.position.set(...pos);g.add(mesh);rig.add(g);av.piv[name]=g;return g;};
+  rig.add(part('body',[1,1,.6],[0,1.4,0]));
+  pivot('armL',[-.65,1.8,0],part('armL',[.3,.9,.3],[0,-.4,0]));
+  pivot('armR',[.65,1.8,0],part('armR',[.3,.9,.3],[0,-.4,0]));
+  pivot('legL',[-.25,.9,0],part('legL',[.36,.9,.36],[0,-.45,0]));
+  pivot('legR',[.25,.9,0],part('legR',[.36,.9,.36],[0,-.45,0]));
+  const head=pivot('head',[0,1.9,0],part('head',[.8,.6,.9],[0,.3,.05]));
+  const metal=new THREE.MeshLambertMaterial({color:0x5d636e}),led=new THREE.MeshBasicMaterial({color:0x00e5ff});
+  [-1,1].forEach(s=>{
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),metal);e.position.set(s*.45,.45,.1);head.add(e);
+    const p=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),led);p.position.set(s*.58,.45,.24);head.add(p);
+  });
+  [[.28,1.1,-.55,0],[.22,.95,-.95,-.4],[.16,1.15,-1.25,-.9]].forEach(([s,y,z,r])=>{
+    const t=new THREE.Mesh(new THREE.BoxGeometry(s,s,.5),metal);t.position.set(0,y,z);t.rotation.x=r;rig.add(t);});
+  av.beacon=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0xff2a2a}));
+  av.beacon.position.y=3.3;av.beacon.visible=false;root.add(av.beacon);
+  return av;
 }
+function stepPose(av,dt){
+  const t=(POSES[av.target]||POSES.stand).v,k=1-Math.exp(-12*dt),c=av.cur,p=av.piv;
+  for(let i=0;i<11;i++)c[i]+=(t[i]-c[i])*k;
+  p.armL.rotation.set(c[0],0,c[1]);p.armR.rotation.set(c[2],0,c[3]);
+  p.legL.rotation.set(c[4],0,c[5]);p.legR.rotation.set(c[6],0,c[7]);
+  p.head.rotation.x=c[8];av.rig.position.y=c[9];av.rig.rotation.x=c[10];
+}
+const serialize=(av,part)=>av.faces[part].map(f=>f.c.toDataURL('image/png'));
+function applyFaces(av,part,faces){
+  if(!av.faces[part]||!Array.isArray(faces))return;
+  faces.slice(0,6).forEach((url,i)=>{
+    if(typeof url!=='string'||!url.startsWith('data:image/png;base64,'))return;
+    const img=new Image();img.onload=()=>{const f=av.faces[part][i];f.g.drawImage(img,0,0);f.t.needsUpdate=true;};img.src=url;});
+}
+function lerpAngle(a,b,k){let d=b-a;d=Math.atan2(Math.sin(d),Math.cos(d));return a+d*k;}
 
-io.on('connection', socket => {
-  socket.on('join', nick => {
-    nick = String(nick || '').trim().slice(0, 12) || '익명';
-    const p = {
-      id: socket.id, nick, found: false, x: 0, z: 0, ry: 0, pose: 'stand', tex: {},
-      role: (phase === 'seeking' || phase === 'ended') ? 'spectator' : 'hider',
-    };
-    players[socket.id] = p;
-    socket.emit('welcome', {
-      id: p.id, seed: MAP_SEED, phase, left, seekerId,
-      players: Object.values(players).map(full),
-    });
-    socket.broadcast.emit('player-add', full(p));
-    roster();
-  });
-
-  socket.on('start', () => {
-    if (phase !== 'lobby' || !players[socket.id]) return;
-    const ids = Object.keys(players);
-    if (ids.length < 2) return;
-    seekerId = ids[Math.floor(Math.random() * ids.length)];
-    ids.forEach(id => { players[id].role = id === seekerId ? 'seeker' : 'hider'; players[id].found = false; });
-    setPhase('hiding', HIDE_SEC, `${players[seekerId].nick}님이 술래! 2분 안에 숨으세요`);
-  });
-
-  socket.on('state', s => {
-    const p = players[socket.id];
-    if (!p || !s) return;
-    p.x = +s.x || 0; p.z = +s.z || 0; p.ry = +s.ry || 0;
-    p.pose = String(s.pose || 'stand').slice(0, 10);
-  });
-
-  socket.on('tex', d => {
-    const p = players[socket.id];
-    if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length !== 6) return;
-    if (!d.faces.every(f => typeof f === 'string' && f.length < 30000 && f.startsWith('data:image/png;base64,'))) return;
-    if (phase === 'seeking' || (phase === 'hiding' && p.role === 'seeker')) return;
-    p.tex[d.part] = d.faces;
-    socket.broadcast.emit('tex', { id: p.id, part: d.part, faces: d.faces });
-  });
-
-  socket.on('tag', id => {
-    const s = players[socket.id], t = players[id];
-    if (phase !== 'seeking' || !s || !t || s.role !== 'seeker' || t.role !== 'hider' || t.found) return;
-    if (Math.hypot(s.x - t.x, s.z - t.z) > 8) return;
-    t.found = true;
-    io.emit('found', { id, nick: t.nick });
-    roster();
-    checkEnd();
-  });
-
-  socket.on('disconnect', () => {
-    const p = players[socket.id];
-    if (!p) return;
-    delete players[socket.id];
-    io.emit('player-remove', socket.id);
-    if (phase === 'hiding' || phase === 'seeking') {
-      if (p.role === 'seeker') endGame('술래가 나갔어요. 숨는 팀 승리!');
-      else if (Object.keys(players).length < 2) endGame('인원이 부족해 게임이 끝났어요');
-      else checkEnd();
-    }
-    roster();
-  });
-});
-
-setInterval(() => {
-  if (phase === 'lobby') return;
-  left--;
-  io.emit('tick', { left });
-  if (left > 0) return;
-  if (phase === 'hiding') setPhase('seeking', SEEK_SEC, '술래가 움직입니다! 5분 안에 찾아요');
-  else if (phase === 'seeking') endGame('시간 종료! 숨는 팀 승리');
-  else {
-    Object.values(players).forEach(p => { p.role = 'hider'; p.found = false; });
-    seekerId = null;
-    setPhase('lobby', 0, '대기실로 돌아왔어요');
+/* ---------- 백룸 맵 ---------- */
+const M=9,N=2*M+1,T=4,H=3.6;
+let MAP=[],OPEN=[],walls=null;
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+function genMap(seed){
+  const r=rng(seed),g=Array.from({length:N},()=>Array(N).fill(1));
+  const vis=Array.from({length:M},()=>Array(M).fill(false)),st=[[0,0]];vis[0][0]=true;g[1][1]=0;
+  while(st.length){
+    const [cx,cy]=st[st.length-1];
+    const nb=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[cx+dx,cy+dy,dx,dy]).filter(([x,y])=>x>=0&&y>=0&&x<M&&y<M&&!vis[y][x]);
+    if(!nb.length){st.pop();continue;}
+    const [nx,ny,dx,dy]=nb[Math.floor(r()*nb.length)];
+    vis[ny][nx]=true;g[2*cy+1+dy][2*cx+1+dx]=0;g[2*ny+1][2*nx+1]=0;st.push([nx,ny]);
   }
-}, 1000);
+  for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++)if(g[y][x]&&r()<.22)g[y][x]=0;
+  return g;
+}
+const wallAt=(x,z)=>{const a=Math.floor(x/T),b=Math.floor(z/T);return a<0||b<0||a>=N||b>=N||MAP[b][a]===1;};
+const hitWall=(x,z,r=.45)=>wallAt(x-r,z-r)||wallAt(x+r,z-r)||wallAt(x-r,z+r)||wallAt(x+r,z+r);
+const cvsTex=(w,h,fn,rep)=>{const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;if(rep)t.repeat.set(rep,rep);return t;};
 
-setInterval(() => {
-  const list = Object.values(players);
-  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, pose: p.pose })));
-}, 70);
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:false});renderer.setPixelRatio(1);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,1,.1,80);
+scene.background=new THREE.Color(0xc8b75a);scene.fog=new THREE.Fog(0xc8b75a,6,36);
+scene.add(new THREE.HemisphereLight(0xfff3b0,0x8a7a3a,.95),new THREE.AmbientLight(0xffffff,.3));
+const plight=new THREE.PointLight(0xfff1b0,.7,14);scene.add(plight);
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('listening on', PORT));
+function buildWorld(seed){
+  MAP=genMap(seed);OPEN=[];let n=0;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(MAP[y][x])n++;else OPEN.push([(x+.5)*T,(y+.5)*T]);}
+  const wallTex=cvsTex(128,128,(g,w,h)=>{
+    g.fillStyle='#cbb95a';g.fillRect(0,0,w,h);
+    for(let x=0;x<w;x+=16){g.fillStyle='#b9a748';g.fillRect(x,0,4,h);g.fillStyle='#d6c669';g.fillRect(x+8,0,2,h);}
+    for(let i=0;i<250;i++){g.fillStyle='rgba(90,70,0,.07)';g.fillRect(Math.random()*w,Math.random()*h,2,7);}
+    g.fillStyle='#85752f';g.fillRect(0,h-10,w,10);});
+  walls=new THREE.InstancedMesh(new THREE.BoxGeometry(T,H,T),new THREE.MeshLambertMaterial({map:wallTex}),n);
+  const d=new THREE.Object3D();let i=0;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(MAP[y][x]){d.position.set((x+.5)*T,H/2,(y+.5)*T);d.rotation.set(0,0,0);d.updateMatrix();walls.setMatrixAt(i++,d.matrix);}
+  scene.add(walls);
+  const carpet=cvsTex(128,128,(g,w,h)=>{g.fillStyle='#8c7b37';g.fillRect(0,0,w,h);
+    for(let i=0;i<2500;i++){g.fillStyle=Math.random()<.5?'rgba(60,45,0,.25)':'rgba(190,170,90,.2)';g.fillRect(Math.random()*w,Math.random()*h,2,2);}},N*T/2);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(N*T,N*T),new THREE.MeshLambertMaterial({map:carpet}));
+  floor.rotation.x=-Math.PI/2;floor.position.set(N*T/2,0,N*T/2);scene.add(floor);
+  const ctex=cvsTex(64,64,(g,w,h)=>{g.fillStyle='#d9d4b0';g.fillRect(0,0,w,h);g.strokeStyle='#a8a37e';g.lineWidth=3;g.strokeRect(0,0,w,h);},N*T/2);
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(N*T,N*T),new THREE.MeshLambertMaterial({map:ctex}));
+  ceil.rotation.x=Math.PI/2;ceil.position.set(N*T/2,H,N*T/2);scene.add(ceil);
+  const lamps=OPEN.filter((_,k)=>k%3===0);
+  const lm=new THREE.InstancedMesh(new THREE.PlaneGeometry(2.2,.8),new THREE.MeshBasicMaterial({color:0xfffbe0}),lamps.length);
+  lamps.forEach(([x,z],k)=>{d.position.set(x,H-.02,z);d.rotation.set(Math.PI/2,0,0);d.updateMatrix();lm.setMatrixAt(k,d.matrix);});
+  scene.add(lm);
+}
+
+/* ---------- 상태 ---------- */
+const me={id:null,x:0,z:0,ry:0,yaw:0,pitch:.35,pose:'stand',role:'hider',found:false};
+let phase='lobby',left=0,seekerId=null,avMe=null,joined=false,rosterList=[];
+const others=new Map();
+let paintMode=false,pYaw=.6,pDist=5,color='#d9c86a',size=8,mode='brush',stroke=null;
+const dirty=new Set(),keys={};
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+
+const canPaint=()=>phase==='lobby'||phase==='ended'||(phase==='hiding'&&me.role!=='seeker');
+const blind=()=>phase==='hiding'&&me.role==='seeker';
+
+function addOther(d){
+  if(others.has(d.id))return others.get(d.id);
+  const av=buildAvatar();av.meshes.forEach(m=>m.userData.owner=d.id);
+  const o={id:d.id,nick:d.nick,role:d.role||'hider',found:!!d.found,av,x:d.x||0,z:d.z||0,ry:d.ry||0,pose:d.pose||'stand'};
+  av.root.position.set(o.x,0,o.z);scene.add(av.root);others.set(d.id,o);
+  if(d.tex)for(const p in d.tex)applyFaces(av,p,d.tex[p]);
+  return o;
+}
+function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),ms);}
+function spawn(){const [x,z]=OPEN[Math.floor(Math.random()*OPEN.length)];me.x=x;me.z=z;}
+
+function renderHud(){
+  const hiders=rosterList.filter(p=>p.role==='hider'&&!p.found).length;
+  const sk=rosterList.find(p=>p.id===seekerId);
+  let t='';
+  if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
+  else if(phase==='hiding')t=me.role==='seeker'?'당신은 술래! 잠시 기다리세요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
+  else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
+  else t='게임 종료';
+  $('phase').textContent=t;
+  const m=Math.max(0,left);$('timer').textContent=phase==='lobby'?'':`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;
+  const r=$('roster');r.textContent='';
+  rosterList.forEach(p=>{const l=document.createElement('div');
+    l.textContent=(p.role==='seeker'?'🔴 ':p.found?'✔ ':p.role==='spectator'?'👁 ':'🦎 ')+p.nick+(p.id===me.id?' (나)':'');
+    if(p.found)l.style.opacity=.5;r.appendChild(l);});
+  const sb=$('startBtn');sb.hidden=!(joined&&phase==='lobby');sb.disabled=rosterList.length<2;
+  sb.textContent=rosterList.length<2?'게임 시작 (2명 이상 필요)':'게임 시작';
+  $('blind').hidden=!blind();
+  $('panel').classList.toggle('lock',!canPaint());
+}
+function setPaint(on){
+  if(blind())on=false;
+  paintMode=on;$('panel').hidden=!on;$('cross').hidden=on;
+  if(on&&document.pointerLockElement)document.exitPointerLock();
+  renderHud();
+}
+function setPose(n){me.pose=n;[...$('poses').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
+
+/* ---------- 소켓 ---------- */
+socket.on('welcome',d=>{
+  me.id=d.id;buildWorld(d.seed);avMe=buildAvatar();scene.add(avMe.root);
+  d.players.forEach(p=>{if(p.id!==me.id)addOther(p);else me.role=p.role;});
+  phase=d.phase;left=d.left;seekerId=d.seekerId;rosterList=d.players.map(p=>({id:p.id,nick:p.nick,role:p.role,found:p.found}));
+  spawn();joined=true;$('login').hidden=true;renderHud();
+});
+socket.on('player-add',p=>addOther(p));
+socket.on('player-remove',id=>{const o=others.get(id);if(o){scene.remove(o.av.root);others.delete(id);}});
+socket.on('roster',list=>{
+  rosterList=list;
+  list.forEach(p=>{
+    if(p.id===me.id){me.role=p.role;me.found=p.found;avMe&&(avMe.beacon.visible=p.role==='seeker');return;}
+    const o=addOther(p);o.nick=p.nick;o.role=p.role;o.found=p.found;
+    o.av.beacon.visible=p.role==='seeker';o.av.root.visible=!(p.found||p.role==='spectator');
+  });
+  renderHud();
+});
+socket.on('phase',d=>{
+  phase=d.phase;left=d.left;seekerId=d.seekerId;
+  if(phase==='hiding'){spawn();setPose('stand');stroke=null;if(blind())setPaint(false);}
+  if(phase==='lobby'){me.found=false;}
+  if(d.msg)toast(d.msg,d.phase==='ended'?8000:4000);
+  renderHud();
+});
+socket.on('tick',d=>{left=d.left;renderHud();});
+socket.on('states',list=>list.forEach(s=>{const o=others.get(s.id);if(o){o.x=s.x;o.z=s.z;o.ry=s.ry;o.pose=s.pose;}}));
+socket.on('tex',d=>{const o=others.get(d.id);if(o)applyFaces(o.av,d.part,d.faces);});
+socket.on('found',d=>{toast(d.id===me.id?'술래에게 들켰어요!':`${d.nick} 발견!`);});
+
+/* ---------- 입력 ---------- */
+function enter(){const n=$('nick').value.trim();socket.emit('join',n);}
+$('enter').onclick=enter;$('nick').onkeydown=e=>{if(e.key==='Enter')enter();};
+$('startBtn').onclick=()=>socket.emit('start');
+$('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(false);
+Object.entries(POSES).forEach(([k,p])=>{const b=document.createElement('button');b.textContent=p.n;b.dataset.k=k;b.onclick=()=>setPose(k);$('poses').appendChild(b);});
+setPose('stand');
+$('color').oninput=e=>color=e.target.value;
+$('size').oninput=e=>{size=+e.target.value;$('sizeV').textContent=size;};
+const setMode=m=>{mode=m;$('mBrush').classList.toggle('on',m==='brush');$('mFill').classList.toggle('on',m==='fill');};
+$('mBrush').onclick=()=>setMode('brush');$('mFill').onclick=()=>setMode('fill');
+
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.type==='text')return;
+  keys[e.code]=true;
+  if(e.code==='KeyE'&&joined)setPaint(!paintMode);
+});
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement!==canvas||paintMode)return;
+  me.yaw-=e.movementX*.0025;me.pitch=Math.max(-.15,Math.min(1,me.pitch+e.movementY*.0025));
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{if(paintMode)pDist=Math.max(2.5,Math.min(9,pDist+e.deltaY*.005));});
+canvas.addEventListener('mousedown',e=>{
+  if(!joined||paintMode)return;
+  if(document.pointerLockElement!==canvas){canvas.requestPointerLock();return;}
+  if(e.button===0)tryTag();
+});
+document.addEventListener('pointerlockchange',()=>{$('cross').hidden=paintMode||document.pointerLockElement!==canvas;});
+
+function pick(e){
+  const r=canvas.getBoundingClientRect();
+  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);return ray.intersectObjects(avMe.meshes,false)[0];
+}
+function paintAt(e,start){
+  if(!canPaint())return;
+  const h=pick(e);if(!h){stroke=null;return;}
+  const part=h.object.userData.part,fi=h.face.materialIndex,f=avMe.faces[part][fi];
+  if(mode==='fill'){
+    if(!start)return;
+    avMe.faces[part].forEach(q=>{q.g.fillStyle=color;q.g.fillRect(0,0,64,64);q.t.needsUpdate=true;});
+    dirty.add(part);flush();return;
+  }
+  const x=h.uv.x*64,y=(1-h.uv.y)*64,g=f.g;
+  g.fillStyle=g.strokeStyle=color;g.lineCap='round';g.lineWidth=size;
+  if(stroke&&stroke.part===part&&stroke.fi===fi){g.beginPath();g.moveTo(stroke.x,stroke.y);g.lineTo(x,y);g.stroke();}
+  else{g.beginPath();g.arc(x,y,size/2,0,7);g.fill();}
+  f.t.needsUpdate=true;stroke={part,fi,x,y};dirty.add(part);
+}
+function flush(){dirty.forEach(p=>socket.emit('tex',{part:p,faces:serialize(avMe,p)}));dirty.clear();stroke=null;}
+canvas.addEventListener('pointerdown',e=>{
+  if(!paintMode||e.button!==0||e.shiftKey)return;
+  canvas.setPointerCapture(e.pointerId);paintAt(e,true);
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!paintMode)return;
+  if((e.buttons&2)||((e.buttons&1)&&e.shiftKey)){pYaw-=e.movementX*.01;return;}
+  if(e.buttons&1)paintAt(e,false);
+});
+canvas.addEventListener('pointerup',()=>{if(paintMode)flush();});
+
+function tryTag(){
+  if(phase!=='seeking'||me.role!=='seeker')return;
+  const targets=[];others.forEach(o=>{if(o.role==='hider'&&!o.found)targets.push(...o.av.meshes);});
+  ndc.set(0,0);ray.setFromCamera(ndc,camera);
+  const h=ray.intersectObjects([...targets,walls],false)[0];
+  if(!h||!h.object.userData.owner)return;
+  const o=others.get(h.object.userData.owner);
+  if(o&&Math.hypot(o.x-me.x,o.z-me.z)<=6.5)socket.emit('tag',o.id);
+}
+
+/* ---------- 루프 ---------- */
+function camAt(ty,yaw,pitch,dist){
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);let d=dist;
+  for(;d>.5;d-=.25)if(!wallAt(me.x+Math.sin(yaw)*cp*d,me.z+Math.cos(yaw)*cp*d))break;
+  camera.position.set(me.x+Math.sin(yaw)*cp*d,ty+sp*d,me.z+Math.cos(yaw)*cp*d);
+  camera.lookAt(me.x,ty,me.z);
+}
+let last=performance.now(),lastSend=0;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(joined){
+    let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0),iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+    if(!paintMode&&!blind()&&(ix||iz)){
+      const l=Math.hypot(ix,iz);ix/=l;iz/=l;
+      const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
+      const dx=(-sy*iz+cy*ix)*SPEED*dt,dz=(-cy*iz-sy*ix)*SPEED*dt;
+      if(!hitWall(me.x+dx,me.z))me.x+=dx;
+      if(!hitWall(me.x,me.z+dz))me.z+=dz;
+      me.ry=lerpAngle(me.ry,Math.atan2(dx,dz),1-Math.exp(-14*dt));
+    }
+    if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
+    avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=me.pose;stepPose(avMe,dt);
+    if(paintMode)camAt(1,pYaw,.15,pDist);else camAt(1.4,me.yaw,me.pitch,4);
+    plight.position.set(me.x,2.6,me.z);
+    const k=1-Math.exp(-12*dt);
+    others.forEach(o=>{const r=o.av.root;
+      r.position.x+=(o.x-r.position.x)*k;r.position.z+=(o.z-r.position.z)*k;
+      r.rotation.y=lerpAngle(r.rotation.y,o.ry,k);o.av.target=o.pose;stepPose(o.av,dt);});
+    if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,ry:me.ry,pose:me.pose});}
+  }
+  renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script></body></html>
