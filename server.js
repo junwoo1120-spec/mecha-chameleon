@@ -7,7 +7,10 @@ const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 2e6 });
 app.use(express.static('public'));
 
-const HIDE_SEC = 120, SEEK_SEC = 300, END_SEC = 10, MAP_SEED = 1337;
+let hideSec = 120, seekSec = 300;
+const END_SEC = 10, MAP_SEED = 1337, DEV_NICK = '박준우';
+const kor = s => s < 60 ? `${s}초` : s % 60 ? `${Math.floor(s / 60)}분 ${s % 60}초` : `${s / 60}분`;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const PARTS = ['head', 'body', 'armL', 'armR', 'legL', 'legR'];
 const players = {};
 let phase = 'lobby', left = 0, seekerId = null;
@@ -30,7 +33,7 @@ function startGame() {
   const ids = Object.keys(players);
   seekerId = ids[Math.floor(Math.random() * ids.length)];
   ids.forEach(id => { const p = players[id]; p.role = id === seekerId ? 'seeker' : 'hider'; p.found = false; p.ready = false; });
-  setPhase('hiding', HIDE_SEC, `${players[seekerId].nick}님이 술래! 2분 안에 숨으세요`);
+  setPhase('hiding', hideSec, `${players[seekerId].nick}님이 술래! ${kor(hideSec)} 안에 숨으세요`);
 }
 function checkStart() {
   const ids = Object.keys(players);
@@ -46,7 +49,7 @@ io.on('connection', socket => {
     };
     players[socket.id] = p;
     socket.emit('welcome', {
-      id: p.id, seed: MAP_SEED, phase, left, seekerId,
+      id: p.id, seed: MAP_SEED, phase, left, seekerId, cfg: { hide: hideSec, seek: seekSec },
       players: Object.values(players).map(full),
     });
     socket.broadcast.emit('player-add', full(p));
@@ -59,6 +62,17 @@ io.on('connection', socket => {
     p.ready = !p.ready;
     roster();
     checkStart();
+  });
+
+  socket.on('dev', d => {
+    const p = players[socket.id];
+    if (!p || p.nick !== DEV_NICK || phase !== 'lobby' || !d) return;
+    const dl = d.delta === 10 ? 10 : d.delta === -10 ? -10 : 0;
+    if (!dl) return;
+    if (d.kind === 'hide') hideSec = clamp(hideSec + dl, 10, 600);
+    else if (d.kind === 'seek') seekSec = clamp(seekSec + dl, 10, 1200);
+    else return;
+    io.emit('cfg', { hide: hideSec, seek: seekSec });
   });
 
   socket.on('state', s => {
@@ -107,7 +121,7 @@ setInterval(() => {
   left--;
   io.emit('tick', { left });
   if (left > 0) return;
-  if (phase === 'hiding') setPhase('seeking', SEEK_SEC, '술래가 움직입니다! 5분 안에 찾아요');
+  if (phase === 'hiding') setPhase('seeking', seekSec, `술래가 움직입니다! ${kor(seekSec)} 안에 찾아요`);
   else if (phase === 'seeking') endGame('시간 종료! 숨는 팀 승리');
   else {
     Object.values(players).forEach(p => { p.role = 'hider'; p.found = false; p.ready = false; });
