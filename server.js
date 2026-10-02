@@ -12,7 +12,7 @@ const PARTS = ['head', 'body', 'armL', 'armR', 'legL', 'legR'];
 const players = {};
 let phase = 'lobby', left = 0, seekerId = null;
 
-const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found });
+const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found, ready: !!p.ready });
 const full = p => ({ ...pub(p), x: p.x, z: p.z, ry: p.ry, pose: p.pose, tex: p.tex });
 const roster = () => io.emit('roster', Object.values(players).map(pub));
 function setPhase(ph, sec, msg) {
@@ -26,11 +26,22 @@ function checkEnd() {
   if (!Object.values(players).some(p => p.role === 'hider' && !p.found)) endGame('술래 승리! 모두 찾았어요');
 }
 
+function startGame() {
+  const ids = Object.keys(players);
+  seekerId = ids[Math.floor(Math.random() * ids.length)];
+  ids.forEach(id => { const p = players[id]; p.role = id === seekerId ? 'seeker' : 'hider'; p.found = false; p.ready = false; });
+  setPhase('hiding', HIDE_SEC, `${players[seekerId].nick}님이 술래! 2분 안에 숨으세요`);
+}
+function checkStart() {
+  const ids = Object.keys(players);
+  if (phase === 'lobby' && ids.length >= 2 && ids.every(id => players[id].ready)) startGame();
+}
+
 io.on('connection', socket => {
   socket.on('join', nick => {
     nick = String(nick || '').trim().slice(0, 12) || '익명';
     const p = {
-      id: socket.id, nick, found: false, x: 0, z: 0, ry: 0, pose: 'stand', tex: {},
+      id: socket.id, nick, found: false, ready: false, x: 0, z: 0, ry: 0, pose: 'stand', tex: {},
       role: (phase === 'seeking' || phase === 'ended') ? 'spectator' : 'hider',
     };
     players[socket.id] = p;
@@ -42,13 +53,12 @@ io.on('connection', socket => {
     roster();
   });
 
-  socket.on('start', () => {
-    if (phase !== 'lobby' || !players[socket.id]) return;
-    const ids = Object.keys(players);
-    if (ids.length < 2) return;
-    seekerId = ids[Math.floor(Math.random() * ids.length)];
-    ids.forEach(id => { players[id].role = id === seekerId ? 'seeker' : 'hider'; players[id].found = false; });
-    setPhase('hiding', HIDE_SEC, `${players[seekerId].nick}님이 술래! 2분 안에 숨으세요`);
+  socket.on('ready', () => {
+    const p = players[socket.id];
+    if (!p || phase !== 'lobby') return;
+    p.ready = !p.ready;
+    roster();
+    checkStart();
   });
 
   socket.on('state', s => {
@@ -60,8 +70,8 @@ io.on('connection', socket => {
 
   socket.on('tex', d => {
     const p = players[socket.id];
-    if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length !== 6) return;
-    if (!d.faces.every(f => typeof f === 'string' && f.length < 30000 && f.startsWith('data:image/png;base64,'))) return;
+    if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length < 1 || d.faces.length > 2) return;
+    if (!d.faces.every(f => typeof f === 'string' && f.length < 80000 && f.startsWith('data:image/png;base64,'))) return;
     if (phase === 'seeking' || (phase === 'hiding' && p.role === 'seeker')) return;
     p.tex[d.part] = d.faces;
     socket.broadcast.emit('tex', { id: p.id, part: d.part, faces: d.faces });
@@ -88,6 +98,7 @@ io.on('connection', socket => {
       else checkEnd();
     }
     roster();
+    checkStart();
   });
 });
 
@@ -99,7 +110,7 @@ setInterval(() => {
   if (phase === 'hiding') setPhase('seeking', SEEK_SEC, '술래가 움직입니다! 5분 안에 찾아요');
   else if (phase === 'seeking') endGame('시간 종료! 숨는 팀 승리');
   else {
-    Object.values(players).forEach(p => { p.role = 'hider'; p.found = false; });
+    Object.values(players).forEach(p => { p.role = 'hider'; p.found = false; p.ready = false; });
     seekerId = null;
     setPhase('lobby', 0, '대기실로 돌아왔어요');
   }
