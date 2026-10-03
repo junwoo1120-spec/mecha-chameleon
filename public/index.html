@@ -19,10 +19,8 @@ canvas{display:block;width:100%;height:100%}
 button{font:inherit;cursor:pointer;border:1px solid #6b5f24;background:#3a3312;color:#f4efc8;padding:8px 12px;border-radius:5px}
 button:hover{background:#4c4318}button.on{background:#c9b94a;color:#1a1608;border-color:#c9b94a}
 button:disabled{opacity:.4;cursor:default}
-#lobby{position:fixed;z-index:7;left:16px;top:16px;width:290px;max-height:calc(100vh - 32px);background:#1a1608ee;border:1px solid #6b5f24;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;overflow:auto}
-#lobby h1{margin:0;font-size:24px}#rules{white-space:pre-line;font-size:14px;opacity:.85}
-#lobbyList{max-height:180px;overflow:auto;line-height:1.8;font-size:15px;border-top:1px solid #4a4219;border-bottom:1px solid #4a4219;padding:8px 0}
-#startBtn{font-size:19px;padding:12px}
+#startBtn{position:fixed;z-index:7;left:16px;top:50%;transform:translateY(-50%);font-size:20px;padding:14px 22px}
+#loading{position:fixed;inset:0;z-index:40;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font-size:44px;letter-spacing:2px}
 #dev{position:fixed;z-index:9;top:10px;right:10px;background:#1a1608ee;border:1px dashed #e8a24a;border-radius:6px;padding:8px;font-size:13px;line-height:2}
 #dev button{padding:2px 8px}
 #poseBar{position:fixed;z-index:9;bottom:44px;left:50%;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:96vw}
@@ -51,14 +49,8 @@ button:disabled{opacity:.4;cursor:default}
 <div id="cross" class="ui" hidden>+</div>
 <div id="toast" class="ui"></div>
 <div id="help" class="ui">WASD 이동 · Shift 시점 잠금 켜기/끄기 · R 포즈(숫자키) · E 꾸미기 · 술래: 클릭으로 잡기</div>
-<div id="lobby" hidden>
-  <h1>🦎 메챠 카멜레온</h1>
-  <div id="rules"></div>
-  <div id="lobbyList"></div>
-  <button id="startBtn">게임 시작</button>
-  <button id="lobbyPaint">🎨 캐릭터 꾸미기</button>
-  <div class="small">R: 포즈 바꾸기 (숫자키 1~8, 0은 기본)<br>Enter: 시작 동의/취소 · Shift: 마우스 풀기</div>
-</div>
+<button id="startBtn" hidden>게임 시작</button>
+<div id="loading" hidden>Loading...</div>
 <div id="dev" hidden><b>개발자 테스트</b> <span class="small">(키 [ ] ; ')</span><br>
   숨는 시간 <button data-k="hide" data-d="-10">-10</button> <span id="devHide"></span> <button data-k="hide" data-d="10">+10</button><br>
   찾는 시간 <button data-k="seek" data-d="-10">-10</button> <span id="devSeek"></span> <button data-k="seek" data-d="10">+10</button>
@@ -160,7 +152,7 @@ function genBody(){
       return [[4,wt],[L?5:7,r*(1-we)],[L?6:8,r*we]];}
     const L=p===4,wt=ss((y-1.15)/.3),wk=ss((.75-y)/.3),r=1-wt;
     return [[4,wt],[L?0:2,r*(1-wk)],[L?1:3,r*wk]];};
-  const e=.012;
+  const e=.02;
   for(let n=0;n<nv;n++){
     const x=V[n*3],y=V[n*3+1],z=V[n*3+2];
     const gx=sdf(x+e,y,z)-sdf(x-e,y,z),gy=sdf(x,y+e,z)-sdf(x,y-e,z),gz=sdf(x,y,z+e)-sdf(x,y,z-e),l=Math.hypot(gx,gy,gz)||1;
@@ -210,7 +202,7 @@ function makeFace(){
   const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');
   g.fillStyle=BASE;g.fillRect(0,0,512,256);
   const t=new THREE.CanvasTexture(c);
-  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide,skinning:true})};
+  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.FrontSide,skinning:true})};
 }
 function buildAvatar(){
   if(!BODYGEO){
@@ -261,7 +253,7 @@ function applyFaces(av,part,faces){
 function lerpAngle(a,b,k){let d=b-a;d=Math.atan2(Math.sin(d),Math.cos(d));return a+d*k;}
 
 /* ---------- 백룸 맵 ---------- */
-const M=9,N=2*M+1,T=4,H=3.6;
+const M=18,N=2*M+1,T=4,H=3.6;
 let MAP=[],OPEN=[],walls=null;
 const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
 function genMap(seed){
@@ -310,7 +302,7 @@ function applyEnv(){
   const lob=phase==='lobby';
   mazeGroup.visible=!lob;if(lobbyGroup)lobbyGroup.visible=lob;
   scene.background.set(lob?0xbfe3ff:0xc8b75a);scene.fog=lob?null:mazeFog;
-  hemi.color.set(lob?0xffffff:0xfff3b0);hemi.groundColor.set(lob?0x9aa0a8:0x8a7a3a);
+  hemi.color.set(lob?0xffffff:0xfff3b0);hemi.groundColor.set(lob?0xc4c9d1:0x8a7a3a);hemi.intensity=lob?.55:.95;amb.intensity=lob?.45:.3;
   plight.intensity=lob?0:.7;
 }
 
@@ -322,7 +314,7 @@ const renderer=new THREE.WebGLRenderer({canvas,antialias:false});renderer.setPix
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,1,.1,80);
 const mazeFog=new THREE.Fog(0xc8b75a,6,36);scene.background=new THREE.Color(0xc8b75a);scene.fog=mazeFog;
 const mazeGroup=new THREE.Group();scene.add(mazeGroup);
-const hemi=new THREE.HemisphereLight(0xfff3b0,0x8a7a3a,.95);scene.add(hemi,new THREE.AmbientLight(0xffffff,.3));
+const hemi=new THREE.HemisphereLight(0xfff3b0,0x8a7a3a,.95),amb=new THREE.AmbientLight(0xffffff,.3);scene.add(hemi,amb);
 const plight=new THREE.PointLight(0xfff1b0,.7,14);scene.add(plight);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
@@ -390,6 +382,7 @@ function renderHud(){
   if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
   else if(phase==='hiding')t=me.role==='seeker'?'당신은 술래! 잠시 기다리세요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
   else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
+  else if(phase==='loading')t='Loading...';
   else t='게임 종료';
   $('phase').textContent=t;
   const m=Math.max(0,left);$('timer').textContent=phase==='lobby'?'':`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;
@@ -398,18 +391,15 @@ function renderHud(){
     l.textContent=(p.role==='seeker'?'🔴 ':p.found?'✔ ':p.role==='spectator'?'👁 ':(phase==='lobby'&&p.ready?'✅ ':'🦎 '))+p.nick+(p.id===me.id?' (나)':'');
     if(p.found)l.style.opacity=.5;r.appendChild(l);});
   const sb=$('startBtn'),n=rosterList.length,rc=rosterList.filter(p=>p.ready).length,mine=rosterList.find(p=>p.id===me.id);
-  $('lobby').hidden=!lobbyUI();$('roster').hidden=lobbyUI();
+  sb.hidden=!lobbyUI();$('loading').hidden=phase!=='loading';
   sb.disabled=n<2;sb.textContent=n<2?'게임 시작 (2명 이상 필요)':`게임 시작 ${rc}/${n}`;
   sb.classList.toggle('on',!!(mine&&mine.ready));
-  $('rules').textContent=`숨기 ${kor(cfg.hide)} → 찾기 ${kor(cfg.seek)}\n모두 시작에 동의하면 술래 1명이 랜덤으로 정해져요`;
-  const ll=$('lobbyList');ll.textContent='';
-  rosterList.forEach(p=>{const d=document.createElement('div');d.textContent=(p.ready?'✅ ':'⬜ ')+p.nick+(p.id===me.id?' (나)':'');ll.appendChild(d);});
   $('dev').hidden=!(mine&&mine.nick==='박준우');$('devHide').textContent=cfg.hide+'초';$('devSeek').textContent=cfg.seek+'초';
   $('blind').hidden=!blind();
   $('panel').classList.toggle('lock',!canPaint());
 }
 function setPaint(on){
-  if(blind())on=false;
+  if(blind()||phase==='loading')on=false;
   paintMode=on;$('panel').hidden=!on;$('cross').hidden=on;
   if(on&&document.pointerLockElement)document.exitPointerLock();
   renderHud();
@@ -437,7 +427,8 @@ socket.on('roster',list=>{
 socket.on('phase',d=>{
   phase=d.phase;left=d.left;seekerId=d.seekerId;
   applyEnv();snapT=performance.now()+500;
-  if(phase==='hiding'){spawn();setPose('stand');stroke=null;if(blind())setPaint(false);}
+  if(phase==='loading'){spawn();setPose('stand');stroke=null;setPaint(false);$('poseBar').hidden=true;}
+  if(phase==='hiding'&&blind())setPaint(false);
   if(phase==='lobby'){me.found=false;spawn();}
   if(d.msg)toast(d.msg,d.phase==='ended'?8000:4000);
   renderHud();
@@ -456,7 +447,6 @@ $('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(
 const POSE_KEYS=Object.keys(POSES).filter(k=>k!=='stand');
 [...POSE_KEYS,'stand'].forEach((k,i)=>{const b=document.createElement('button');b.dataset.k=k;
   b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.onclick=()=>setPose(k);$('poseBar').appendChild(b);});
-$('lobbyPaint').onclick=()=>setPaint(true);
 document.querySelectorAll('#dev button').forEach(b=>b.onclick=()=>socket.emit('dev',{kind:b.dataset.k,delta:+b.dataset.d}));
 setPose('stand');
 $('color').oninput=e=>color=e.target.value;
@@ -562,9 +552,9 @@ let last=performance.now(),lastSend=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(joined){
-    const s=paintMode?.72:scaleOf(me.role),rad=.45*s/.72;
+    const s=scaleOf(me.role),rad=.45*s/.72;
     let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0),iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
-    if(!paintMode&&!blind()&&(ix||iz)){
+    if(!paintMode&&!blind()&&phase!=='loading'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
       const dx=(-sy*iz+cy*ix)*SPEED*dt,dz=(-cy*iz-sy*ix)*SPEED*dt;
@@ -574,7 +564,7 @@ function loop(now){
     }
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
     avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
-    if(paintMode)camAt(1,pYaw,.15,pDist);else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
+    if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));
