@@ -66,12 +66,17 @@ io.on('connection', socket => {
 
   socket.on('dev', d => {
     const p = players[socket.id];
-    if (!p || p.nick !== DEV_NICK || phase !== 'lobby' || !d) return;
+    if (!p || p.nick !== DEV_NICK || !d) return;
     const dl = d.delta === 10 ? 10 : d.delta === -10 ? -10 : 0;
     if (!dl) return;
-    if (d.kind === 'hide') hideSec = clamp(hideSec + dl, 10, 600);
-    else if (d.kind === 'seek') seekSec = clamp(seekSec + dl, 10, 1200);
-    else return;
+    // 설정값과 (해당 단계가 진행 중이면) 남은 시간을 함께 조절
+    if (d.kind === 'hide') {
+      hideSec = clamp(hideSec + dl, 10, 600);
+      if (phase === 'hiding') { left = Math.max(1, left + dl); io.emit('tick', { left }); }
+    } else if (d.kind === 'seek') {
+      seekSec = clamp(seekSec + dl, 10, 1200);
+      if (phase === 'seeking') { left = Math.max(1, left + dl); io.emit('tick', { left }); }
+    } else return;
     io.emit('cfg', { hide: hideSec, seek: seekSec });
   });
 
@@ -85,7 +90,7 @@ io.on('connection', socket => {
   socket.on('tex', d => {
     const p = players[socket.id];
     if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length < 1 || d.faces.length > 2) return;
-    if (!d.faces.every(f => typeof f === 'string' && f.length < 80000 && f.startsWith('data:image/png;base64,'))) return;
+    if (!d.faces.every(f => typeof f === 'string' && f.length < 250000 && f.startsWith('data:image/png;base64,'))) return;
     if (phase === 'seeking' || (phase === 'hiding' && p.role === 'seeker')) return;
     p.tex[d.part] = d.faces;
     socket.broadcast.emit('tex', { id: p.id, part: d.part, faces: d.faces });
