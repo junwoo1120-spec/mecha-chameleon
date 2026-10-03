@@ -36,11 +36,20 @@ button:disabled{opacity:.4;cursor:default}
 #msgLock{font-size:12px;color:#e8a24a;display:none;margin-bottom:8px}
 #panel.lock #msgLock{display:block}
 .small{font-size:12px;opacity:.7}
-#login{position:fixed;inset:0;z-index:20;background:#c9b94a;display:flex;align-items:center;justify-content:center}
-#login .box{background:#1a1608;padding:30px 36px;border-radius:8px;text-align:center;width:320px}
-#login h1{margin:0 0 4px;font-size:26px}#login p{margin:0 0 16px;opacity:.7;font-size:14px}
-#login input{width:100%;padding:10px;font:inherit;border-radius:5px;border:1px solid #6b5f24;background:#2b250d;color:#f4efc8;margin-bottom:10px}
-#login button{width:100%;padding:10px;font-size:16px}
+#login{position:fixed;inset:0;z-index:20;overflow:hidden;background:#3a2a24}
+#titleBg{position:absolute;inset:0;width:100%;height:100%}
+#titleWrap{position:relative;z-index:1;height:100%;display:flex;align-items:center;justify-content:center;gap:5vw;padding:0 4vw}
+#titleLeft{display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+#logo{font-family:'Arial Black',Impact,'Noto Sans KR',sans-serif;font-weight:900;line-height:.98;font-size:clamp(40px,8.5vw,112px)}
+#logo span{display:inline-block;color:transparent;-webkit-text-stroke:1px rgba(0,0,0,.25);filter:drop-shadow(3px 4px 0 rgba(0,0,0,.5))}
+#sub{font-size:20px;letter-spacing:.25em;color:#f4efc8;text-shadow:0 2px 6px #000}
+#loginForm{display:flex;gap:10px}
+#loginForm input{width:260px;padding:12px 14px;font:inherit;font-size:18px;border-radius:6px;border:2px solid #f4efc8;background:#1a1608e0;color:#f4efc8}
+#loginForm button{font-size:18px;padding:12px 26px}
+#loginHint{font-size:13px;color:#f4efc8;opacity:.8;text-shadow:0 1px 4px #000}
+#titleFig{width:min(30vw,340px);height:auto;flex:none}
+@media (max-width:800px){#titleFig{display:none}}
+#ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="blind" hidden><div>술래는 눈을 감고 기다리는 중…<br><small>숨는 시간이 끝나면 시작해요</small></div></div>
@@ -48,7 +57,7 @@ button:disabled{opacity:.4;cursor:default}
 <div id="roster" class="ui"></div>
 <div id="cross" class="ui" hidden>+</div>
 <div id="toast" class="ui"></div>
-<div id="help" class="ui">WASD 이동 · Shift 시점 잠금 켜기/끄기 · R 포즈(숫자키) · E 꾸미기 · 술래: 클릭으로 잡기</div>
+<div id="help" class="ui">WASD 이동 · Ctrl 달리기 · 방향키 시점 · Shift 마우스 잠금 · R 포즈 · E 꾸미기 · 술래: 클릭/F로 잡기</div>
 <button id="startBtn" hidden>게임 시작</button>
 <div id="loading" hidden>Loading...</div>
 <div id="dev" hidden><b>개발자 테스트</b> <span class="small">(키 [ ] ; ')</span><br>
@@ -68,8 +77,37 @@ button:disabled{opacity:.4;cursor:default}
   <div class="small">스포이드(I): 화면에 보이는 색 따기<br>좌클릭: 칠하기 / 채우기(부위 클릭)<br>우클릭 드래그·←→: 회전 · 휠: 확대</div>
   <div class="row" style="margin-top:10px"><button id="closeP" style="flex:1">닫기 (E)</button></div>
 </div>
-<div id="login"><div class="box"><h1>🦎 메챠 카멜레온</h1><p>백룸에서 숨바꼭질</p>
-<input id="nick" maxlength="12" placeholder="닉네임" autocomplete="off"><button id="enter">입장</button></div></div>
+<div id="login">
+  <canvas id="titleBg"></canvas>
+  <div id="titleWrap">
+    <div id="titleLeft">
+      <div id="logo"><div id="logo1"></div><div id="logo2"></div></div>
+      <div id="sub">메챠 카멜레온 · 백룸 술래잡기</div>
+      <div id="loginForm"><input id="nick" maxlength="12" placeholder="닉네임을 입력하세요" autocomplete="off"><button id="enter">입장</button></div>
+      <div id="loginHint">Enter로 입장 · 숨기 2분 → 찾기 5분 · 술래는 랜덤</div>
+    </div>
+    <svg id="titleFig" viewBox="0 0 300 430">
+      <defs>
+        <pattern id="brk" width="60" height="30" patternUnits="userSpaceOnUse">
+          <rect width="60" height="30" fill="#b4533d"/>
+          <path d="M0 0H60M0 15H60M0 30H60M15 0V15M45 15V30" stroke="#e6ded0" stroke-width="3" fill="none"/>
+        </pattern>
+        <filter id="shd" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="6" dy="8" stdDeviation="6" flood-opacity=".5"/></filter>
+      </defs>
+      <g filter="url(#shd)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M110 150 L35 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
+        <path d="M190 150 L265 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
+        <path d="M128 285 L112 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
+        <path d="M172 285 L188 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
+        <rect x="95" y="115" width="110" height="190" rx="48" fill="url(#brk)"/>
+        <circle cx="150" cy="68" r="54" fill="#f6f6f2"/>
+        <circle cx="130" cy="60" r="5" fill="#222"/><circle cx="170" cy="60" r="5" fill="#222"/>
+        <path d="M122 82 Q150 108 178 82" stroke="#222" stroke-width="6" fill="none"/>
+      </g>
+    </svg>
+  </div>
+  <div id="ver">v7</div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
@@ -235,12 +273,17 @@ function buildAvatar(){
 function stepPose(av,dt){
   const t=(POSES[av.target]||POSES.stand).v,k=1-Math.exp(-12*dt),c=av.cur,p=av.piv;
   for(let i=0;i<20;i++)c[i]+=(t[i]-c[i])*k;
-  p.shL.rotation.set(c[0],0,c[1]);p.elL.rotation.set(c[2],0,c[3]);
-  p.shR.rotation.set(c[4],0,c[5]);p.elR.rotation.set(c[6],0,c[7]);
-  p.hipL.rotation.set(c[8],0,c[9]);p.knL.rotation.x=c[10];
-  p.hipR.rotation.set(c[11],0,c[12]);p.knR.rotation.x=c[13];
-  p.head.rotation.x=c[14];p.torso.rotation.x=c[15];
-  av.rig.position.set(c[19],c[16],0);av.rig.rotation.set(c[17],0,c[18]);
+  // 걷기/달리기 모션 (기본 자세일 때만)
+  const want=(av.moving&&av.target==='stand')?1:0;
+  av.walkW=(av.walkW||0)+(want-(av.walkW||0))*(1-Math.exp(-10*dt));
+  av.phase=(av.phase||0)+dt*(av.run?15:10.5)*(want?1:.3);
+  const w=av.walkW,A=av.run?1.25:1,s1=Math.sin(av.phase),s2=-s1,k1=Math.max(0,Math.cos(av.phase)),k2=Math.max(0,-Math.cos(av.phase));
+  p.shL.rotation.set(c[0]+.7*A*w*s1,0,c[1]);p.elL.rotation.set(c[2]-.35*A*w,0,c[3]);
+  p.shR.rotation.set(c[4]+.7*A*w*s2,0,c[5]);p.elR.rotation.set(c[6]-.35*A*w,0,c[7]);
+  p.hipL.rotation.set(c[8]-.75*A*w*s1,0,c[9]);p.knL.rotation.x=c[10]+.9*A*w*k1;
+  p.hipR.rotation.set(c[11]-.75*A*w*s2,0,c[12]);p.knR.rotation.x=c[13]+.9*A*w*k2;
+  p.head.rotation.x=c[14];p.torso.rotation.x=c[15]+(av.run?.14:0)*w;
+  av.rig.position.set(c[19],c[16]+Math.abs(s1)*.035*w,0);av.rig.rotation.set(c[17],0,c[18]);
 }
 const serialize=(av,part)=>av.faces[part].map(f=>f.c.toDataURL('image/png'));
 function applyFaces(av,part,faces){
@@ -466,6 +509,8 @@ function doPick(){
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'&&e.target.type==='text')return;
   keys[e.code]=true;
+  if(joined&&(e.ctrlKey||e.code.startsWith('Arrow')||e.code==='Space'))e.preventDefault();
+  if((e.code==='Space'||e.code==='KeyF')&&joined&&!paintMode&&!e.repeat)tryTag();
   if(e.code==='KeyE'&&joined)setPaint(!paintMode);
   if(e.code==='KeyR'&&joined&&!e.repeat)$('poseBar').hidden=!$('poseBar').hidden;
   if(e.code==='KeyI'&&paintMode)setMode('pick');
@@ -553,21 +598,25 @@ function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(joined){
     const s=scaleOf(me.role),rad=.45*s/.72;
+    let moving=false;const run=!!(keys.ControlLeft||keys.ControlRight);
     let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0),iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
     if(!paintMode&&!blind()&&phase!=='loading'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
-      const dx=(-sy*iz+cy*ix)*SPEED*dt,dz=(-cy*iz-sy*ix)*SPEED*dt;
+      const SPD=SPEED*(run?1.4:1),dx=(-sy*iz+cy*ix)*SPD*dt,dz=(-cy*iz-sy*ix)*SPD*dt;moving=true;
       if(!hitWall(me.x+dx,me.z,rad))me.x+=dx;
       if(!hitWall(me.x,me.z+dz,rad))me.z+=dz;
       me.ry=lerpAngle(me.ry,Math.atan2(dx,dz),1-Math.exp(-14*dt));
     }
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
+    else{if(keys.ArrowLeft)me.yaw+=2.2*dt;if(keys.ArrowRight)me.yaw-=2.2*dt;
+      if(keys.ArrowUp)me.pitch=Math.max(-.15,me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(1,me.pitch+1.6*dt);}
+    avMe.moving=moving;avMe.run=moving&&run;
     avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
     if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
-    others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));
+    others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));o.av.moving=!(now<snapT)&&Math.hypot(o.x-r.position.x,o.z-r.position.z)>.06;
       if(now<snapT){r.position.x=o.x;r.position.z=o.z;}else{r.position.x+=(o.x-r.position.x)*k;r.position.z+=(o.z-r.position.z)*k;}
       r.rotation.y=lerpAngle(r.rotation.y,o.ry,k);o.av.target=o.pose;stepPose(o.av,dt);});
     if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,ry:me.ry,pose:me.pose});}
@@ -575,4 +624,30 @@ function loop(now){
   renderer.render(scene,camera);if(pickReq)doPick();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/* ---------- 시작(타이틀) 화면 ---------- */
+function drawTitleBg(){
+  const c=$('titleBg');c.width=innerWidth;c.height=innerHeight;const g=c.getContext('2d');
+  const bw=110,bh=46;let seed=7;const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  g.fillStyle='#8f8a80';g.fillRect(0,0,c.width,c.height);
+  for(let row=0;row*bh<c.height+bh;row++){const off=(row%2)*bw/2;
+    for(let x=-bw;x<c.width+bw;x+=bw){
+      g.fillStyle=`hsl(${8+r()*10},45%,${32+r()*14}%)`;g.fillRect(x+off+3,row*bh+3,bw-6,bh-6);
+      for(let k=0;k<12;k++){g.fillStyle=r()<.5?`rgba(0,0,0,${r()*.14})`:`rgba(255,220,200,${r()*.1})`;
+        g.fillRect(x+off+3+r()*(bw-16),row*bh+3+r()*(bh-12),4+r()*18,2+r()*6);}
+    }}
+  const m=Math.max(c.width,c.height),gr=g.createRadialGradient(c.width/2,c.height/2,m*.2,c.width/2,c.height/2,m*.75);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.7)');g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);
+}
+function buildLogo(){
+  [['logo1','MECCHA',0],['logo2','CHAMELEON',120]].forEach(([id,txt,base])=>{
+    [...txt].forEach((ch,i)=>{const sp=document.createElement('span'),h=(i*53+base)%360;sp.textContent=ch;
+      sp.style.background=`linear-gradient(${(i*37)%180}deg,hsl(${h},95%,62%),hsl(${(h+70)%360},95%,58%),hsl(${(h+140)%360},95%,60%))`;
+      sp.style.webkitBackgroundClip='text';sp.style.backgroundClip='text';$(id).appendChild(sp);});});
+}
+drawTitleBg();buildLogo();$('nick').focus();
+addEventListener('resize',()=>{if(!$('login').hidden)drawTitleBg();});
+document.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.blur();});
+// Ctrl+W(달리며 앞으로 가기)로 탭이 닫히는 것을 막는 확인창
+addEventListener('beforeunload',e=>{if(joined&&(keys.ControlLeft||keys.ControlRight)){e.preventDefault();e.returnValue='';}});
 </script></body></html>
