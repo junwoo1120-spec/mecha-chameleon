@@ -92,7 +92,7 @@ io.on('connection', socket => {
     const p = players[socket.id];
     if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length < 1 || d.faces.length > 2) return;
     if (!d.faces.every(f => typeof f === 'string' && f.length < 250000 && f.startsWith('data:image/png;base64,'))) return;
-    if (phase === 'seeking' || phase === 'loading' || (phase === 'hiding' && p.role === 'seeker')) return;
+    if (phase === 'seeking' || phase === 'loading') return;
     p.tex[d.part] = d.faces;
     socket.broadcast.emit('tex', { id: p.id, part: d.part, faces: d.faces });
   });
