@@ -15,6 +15,9 @@ npm start   # http://localhost:3000
 3. 서비스 → Settings → Networking → Generate Domain
 (PORT는 Railway가 자동 주입, 별도 설정 불필요)
 
+## 대기실 / 시작
+대기실 화면 왼쪽의 '게임 시작' 버튼(전원 동의) → 검은 화면 Loading... 5초 → 백룸에서 시작.
+
 ## 대기실
 접속하면 백룸과 분리된 대기실에서 자유롭게 돌아다닐 수 있고, 모두 시작에 동의하면 백룸으로 이동합니다.
 
