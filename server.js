@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 2e6 });
-app.use(express.static('public'));
+app.use(express.static('public', { etag: false, setHeaders: res => res.set('Cache-Control', 'no-store') }));
 
 let hideSec = 120, seekSec = 300;
 const END_SEC = 10, LOAD_SEC = 5, MAP_SEED = 1337, DEV_NICK = '박준우';
@@ -16,7 +16,7 @@ const players = {};
 let phase = 'lobby', left = 0, seekerId = null;
 
 const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found, ready: !!p.ready });
-const full = p => ({ ...pub(p), x: p.x, z: p.z, ry: p.ry, pose: p.pose, tex: p.tex });
+const full = p => ({ ...pub(p), x: p.x, z: p.z, y: p.y, run: p.run, ry: p.ry, pose: p.pose, tex: p.tex });
 const roster = () => io.emit('roster', Object.values(players).map(pub));
 function setPhase(ph, sec, msg) {
   phase = ph; left = sec;
@@ -44,7 +44,7 @@ io.on('connection', socket => {
   socket.on('join', nick => {
     nick = String(nick || '').trim().slice(0, 12) || '익명';
     const p = {
-      id: socket.id, nick, found: false, ready: false, x: 0, z: 0, ry: 0, pose: 'stand', tex: {},
+      id: socket.id, nick, found: false, ready: false, x: 0, z: 0, y: 0, run: false, ry: 0, pose: 'stand', tex: {},
       role: (phase === 'seeking' || phase === 'ended') ? 'spectator' : 'hider',
     };
     players[socket.id] = p;
@@ -84,6 +84,7 @@ io.on('connection', socket => {
     const p = players[socket.id];
     if (!p || !s) return;
     p.x = +s.x || 0; p.z = +s.z || 0; p.ry = +s.ry || 0;
+    p.y = clamp(+s.y || 0, 0, 6); p.run = !!s.run;
     p.pose = String(s.pose || 'stand').slice(0, 10);
   });
 
@@ -138,7 +139,7 @@ setInterval(() => {
 
 setInterval(() => {
   const list = Object.values(players);
-  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, pose: p.pose })));
+  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, y: p.y, run: p.run, ry: p.ry, pose: p.pose })));
 }, 70);
 
 const PORT = process.env.PORT || 3000;
