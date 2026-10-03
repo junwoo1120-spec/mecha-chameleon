@@ -15,5 +15,8 @@ npm start   # http://localhost:3000
 3. 서비스 → Settings → Networking → Generate Domain
 (PORT는 Railway가 자동 주입, 별도 설정 불필요)
 
+## 대기실
+접속하면 백룸과 분리된 대기실에서 자유롭게 돌아다닐 수 있고, 모두 시작에 동의하면 백룸으로 이동합니다.
+
 ## 조작
 WASD 이동 · Shift 시점 잠금 켜기/끄기 · R 포즈 바(숫자키 0~8) · E 꾸미기(색칠) · 술래는 클릭으로 잡기
