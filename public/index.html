@@ -47,7 +47,7 @@ button:disabled{opacity:.4;cursor:default}
 #loginForm input{width:260px;padding:12px 14px;font:inherit;font-size:18px;border-radius:6px;border:2px solid #f4efc8;background:#1a1608e0;color:#f4efc8}
 #loginForm button{font-size:18px;padding:12px 26px}
 #loginHint{font-size:13px;color:#f4efc8;opacity:.8;text-shadow:0 1px 4px #000}
-#titleFig{width:min(36vw,440px);height:auto;flex:none}
+#titleFig{width:min(30vw,340px);height:auto;flex:none}
 @media (max-width:800px){#titleFig{display:none}}
 #ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
@@ -86,38 +86,27 @@ button:disabled{opacity:.4;cursor:default}
       <div id="loginForm"><input id="nick" maxlength="12" placeholder="닉네임을 입력하세요" autocomplete="off"><button id="enter">입장</button></div>
       <div id="loginHint">Enter로 입장 · 숨기 2분 → 찾기 5분 · 술래는 랜덤</div>
     </div>
-    <svg id="titleFig" viewBox="0 0 600 680">
+    <svg id="titleFig" viewBox="0 0 300 430">
       <defs>
-        <pattern id="brk" width="70" height="34" patternUnits="userSpaceOnUse">
-          <rect width="70" height="34" fill="#b4533d"/>
-          <path d="M0 0H70M0 17H70M0 34H70M17 0V17M52 17V34" stroke="#e6ded0" stroke-width="3.5" fill="none"/>
+        <pattern id="brk" width="60" height="30" patternUnits="userSpaceOnUse">
+          <rect width="60" height="30" fill="#b4533d"/>
+          <path d="M0 0H60M0 15H60M0 30H60M15 0V15M45 15V30" stroke="#e6ded0" stroke-width="3" fill="none"/>
         </pattern>
-        <linearGradient id="fadeG" gradientUnits="userSpaceOnUse" x1="330" y1="0" x2="460" y2="0">
-          <stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/>
-        </linearGradient>
-        <mask id="fadeM" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="680"><rect width="600" height="680" fill="url(#fadeG)"/></mask>
-        <filter id="shd" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="6" dy="8" stdDeviation="7" flood-opacity=".5"/></filter>
+        <filter id="shd" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="6" dy="8" stdDeviation="6" flood-opacity=".5"/></filter>
       </defs>
-      <g filter="url(#shd)" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <g stroke="url(#brk)">
-          <path d="M310 450 L150 625" stroke-width="86"/><path d="M390 440 L535 615" stroke-width="82"/>
-          <path d="M300 195 L25 160" stroke-width="52"/><path d="M430 220 L585 178" stroke-width="58"/>
-          <rect x="250" y="170" width="195" height="300" rx="80" fill="url(#brk)" stroke="none"/>
-        </g>
-        <g stroke="#f6f6f2" mask="url(#fadeM)">
-          <path d="M310 450 L150 625" stroke-width="86"/><path d="M390 440 L535 615" stroke-width="82"/>
-          <path d="M300 195 L25 160" stroke-width="52"/><path d="M430 220 L585 178" stroke-width="58"/>
-          <rect x="250" y="170" width="195" height="300" rx="80" fill="#f6f6f2" stroke="none"/>
-        </g>
-        <path d="M455 262 q8 -26 18 -6 q10 18 24 -12" stroke="#b4533d" stroke-width="8" opacity=".75"/>
-        <path d="M365 140 L365 200" stroke="#f6f6f2" stroke-width="70"/>
-        <circle cx="365" cy="108" r="60" fill="#f6f6f2" stroke="none"/>
-        <path d="M338 90 v16 M404 94 v16" stroke="#1a1a1a" stroke-width="7"/>
-        <path d="M330 124 Q372 160 424 130" stroke="#1a1a1a" stroke-width="7"/>
+      <g filter="url(#shd)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M110 150 L35 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
+        <path d="M190 150 L265 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
+        <path d="M128 285 L112 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
+        <path d="M172 285 L188 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
+        <rect x="95" y="115" width="110" height="190" rx="48" fill="url(#brk)"/>
+        <circle cx="150" cy="68" r="54" fill="#f6f6f2"/>
+        <circle cx="130" cy="60" r="5" fill="#222"/><circle cx="170" cy="60" r="5" fill="#222"/>
+        <path d="M122 82 Q150 108 178 82" stroke="#222" stroke-width="6" fill="none"/>
       </g>
     </svg>
   </div>
-  <div id="ver">v9</div>
+  <div id="ver">v11</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -125,16 +114,17 @@ button:disabled{opacity:.4;cursor:default}
 <script>
 const $=id=>document.getElementById(id);
 const socket=io();
-const D=Math.PI/180, SPEED=5.5;
+const D=Math.PI/180, SPEED=3.3;
 const BASE='#f2f2ee';
 
 /* ---------- 포즈 ---------- */
 // al/ar: [어깨x,어깨z,팔꿈치x,팔꿈치z]  ll/lr: [엉덩이x,엉덩이z,무릎x]  h:고개  t:상체숙임  y,ox:위치  rx,rz:몸 눕힘
 const BASEP={al:[0,0,0,0],ar:[0,0,0,0],ll:[0,0,0],lr:[0,0,0]};
 const P=o=>{o={...BASEP,...o};
-  return [...o.al,...o.ar,...o.ll,...o.lr,o.h||0,o.t||0,o.y||0,o.rx||0,o.rz||0,o.ox||0].map((v,i)=>(i===16||i===19)?v:v*D);};
+  return [...o.al,...o.ar,...o.ll,...o.lr,o.h||0,o.t||0,o.y||0,o.rx||0,o.rz||0,o.ox||0,o.oz||0].map((v,i)=>(i===16||i===19||i===20)?v:v*D);};
 const POSES={
   stand:{n:'기본',v:P({})},
+  lie:{n:'대자로 눕기',v:P({rx:-90,y:.28,oz:1.2,al:[0,-115,0,0],ar:[0,115,0,0],ll:[0,-28,0],lr:[0,28,0]})},
   hunch:{n:'숙이기',v:P({t:55,h:15,ll:[-35,-2,45],lr:[-35,2,45],y:-.1,al:[-20,-6,0,0],ar:[-140,0,0,-100]})},
   flex:{n:'알통',v:P({al:[0,-90,0,-90],ar:[0,90,0,90]})},
   ring:{n:'머리 위 원',v:P({al:[0,-160,0,-60],ar:[0,160,0,60]})},
@@ -283,12 +273,12 @@ function buildAvatar(){
 }
 function stepPose(av,dt){
   const t=(POSES[av.target]||POSES.stand).v,k=1-Math.exp(-12*dt),c=av.cur,p=av.piv;
-  for(let i=0;i<20;i++)c[i]+=(t[i]-c[i])*k;
+  for(let i=0;i<21;i++)c[i]+=(t[i]-c[i])*k;
   const st=av.target==='stand',want=(av.moving&&st)?1:0,sm=(v,to,r)=>v+(to-v)*(1-Math.exp(-r*dt));
   av.walkW=sm(av.walkW||0,want,10);
   av.runW=sm(av.runW||0,(want&&av.run&&!av.air)?1:0,9);   // 달릴 때: 팔을 위로
   av.airW=sm(av.airW||0,(av.air&&st)?1:0,14);             // 점프 중: 팔 위로 + 무릎 접기
-  av.phase=(av.phase||0)+dt*(av.run?15:10.5)*(want?1:.3);
+  av.phase=(av.phase||0)+dt*(av.run?9.5:6.5)*(av.rate||1)*(want?1:.3);
   const w=av.walkW,rW=av.runW,aW=av.airW,up=Math.max(rW,aW),A=av.run?1.25:1;
   const s1=Math.sin(av.phase),s2=-s1,k1=Math.max(0,Math.cos(av.phase)),k2=Math.max(0,-Math.cos(av.phase));
   const swing=.7*A*w*(1-up),wig=.14*Math.sin(av.phase*2)*rW,armZ=2.55*up;
@@ -297,7 +287,7 @@ function stepPose(av,dt){
   p.hipL.rotation.set(c[8]-.75*A*w*s1-.55*aW,0,c[9]);p.knL.rotation.x=c[10]+.9*A*w*k1+1.0*aW;
   p.hipR.rotation.set(c[11]-.75*A*w*s2-.55*aW,0,c[12]);p.knR.rotation.x=c[13]+.9*A*w*k2+1.0*aW;
   p.head.rotation.x=c[14];p.torso.rotation.x=c[15]+(av.run?.14:0)*w;
-  av.rig.position.set(c[19],c[16]+Math.abs(s1)*.035*w,0);av.rig.rotation.set(c[17],0,c[18]);
+  av.rig.position.set(c[19],c[16]+Math.abs(s1)*.035*w,c[20]);av.rig.rotation.set(c[17],0,c[18]);
 }
 const serialize=(av,part)=>av.faces[part].map(f=>f.c.toDataURL('image/png'));
 function applyFaces(av,part,faces){
@@ -310,7 +300,7 @@ function applyFaces(av,part,faces){
 function lerpAngle(a,b,k){let d=b-a;d=Math.atan2(Math.sin(d),Math.cos(d));return a+d*k;}
 
 /* ---------- 백룸 맵 ---------- */
-const M=18,N=2*M+1,T=4,H=3.6;
+const M=9,N=2*M+1,T=4,H=3.6;
 let MAP=[],OPEN=[],walls=null;
 const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
 function genMap(seed){
@@ -327,15 +317,18 @@ function genMap(seed){
   return g;
 }
 const wallAt=(x,z)=>{const a=Math.floor(x/T),b=Math.floor(z/T);return a<0||b<0||a>=N||b>=N||MAP[b][a]===1;};
-const hitMaze=(x,z,r=.45)=>wallAt(x-r,z-r)||wallAt(x+r,z-r)||wallAt(x-r,z+r)||wallAt(x+r,z+r);
+const PROPBOX=[],PROPMESH=[];
+const hitProps=(x,z,r)=>{for(const b of PROPBOX)if(Math.abs(x-b[0])<b[2]+r&&Math.abs(z-b[1])<b[3]+r)return true;return false;};
+const hitMaze=(x,z,r=.45)=>wallAt(x-r,z-r)||wallAt(x+r,z-r)||wallAt(x-r,z+r)||wallAt(x+r,z+r)||hitProps(x,z,r);
 /* ---------- 대기실 (백룸과 분리된 별도 공간) ---------- */
 const LB={x0:300,z0:0,w:32,d:32},LOBS=[[8,8,3,3],[24,8,3,3],[8,24,3,3],[24,24,3,3],[16,17,7,2]];
 const hitLobby=(x,z,r)=>{
   if(x<LB.x0+r||x>LB.x0+LB.w-r||z<LB.z0+r||z>LB.z0+LB.d-r)return true;
   for(const [ox,oz,w,d] of LOBS)if(Math.abs(x-LB.x0-ox)<w/2+r&&Math.abs(z-LB.z0-oz)<d/2+r)return true;
   return false;};
-const hitWall=(x,z,r=.45)=>phase==='lobby'?hitLobby(x,z,r):hitMaze(x,z,r);
-const solidAt=(x,z)=>phase==='lobby'?hitLobby(x,z,0):wallAt(x,z);
+const lobbyWorld=()=>phase==='lobby'||(phase==='hiding'&&me.role==='seeker');
+const hitWall=(x,z,r=.45)=>lobbyWorld()?hitLobby(x,z,r):hitMaze(x,z,r);
+const solidAt=(x,z)=>lobbyWorld()?hitLobby(x,z,0):wallAt(x,z);
 let lobbyGroup=null;
 function buildLobby(){
   lobbyGroup=new THREE.Group();scene.add(lobbyGroup);
@@ -356,7 +349,7 @@ function buildLobby(){
   sp.position.set(cx,4.5,LB.z0+.05);lobbyGroup.add(sp);
 }
 function applyEnv(){
-  const lob=phase==='lobby';
+  const lob=lobbyWorld();
   mazeGroup.visible=!lob;if(lobbyGroup)lobbyGroup.visible=lob;
   scene.background.set(lob?0xbfe3ff:0xc8b75a);scene.fog=lob?null:mazeFog;
   hemi.color.set(lob?0xffffff:0xfff3b0);hemi.groundColor.set(lob?0xc4c9d1:0x8a7a3a);hemi.intensity=lob?.55:.95;amb.intensity=lob?.45:.3;
@@ -375,6 +368,84 @@ const hemi=new THREE.HemisphereLight(0xfff3b0,0x8a7a3a,.95),amb=new THREE.Ambien
 const plight=new THREE.PointLight(0xfff1b0,.7,14);scene.add(plight);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
+
+/* ---------- 길 찾기용 소품 / 구역 표지 ---------- */
+function buildProps(seed){
+  const r=rng(seed+777),grp=new THREE.Group();mazeGroup.add(grp);PROPBOX.length=0;PROPMESH.length=0;
+  const GC={},MC={};
+  const bx=(w,h,d)=>GC['b'+w+'_'+h+'_'+d]||(GC['b'+w+'_'+h+'_'+d]=new THREE.BoxGeometry(w,h,d));
+  const cy=(a,b,h)=>GC['c'+a+'_'+b+'_'+h]||(GC['c'+a+'_'+b+'_'+h]=new THREE.CylinderGeometry(a,b,h,12));
+  const sp=q=>GC['s'+q]||(GC['s'+q]=new THREE.SphereGeometry(q,12,10));
+  const M=c=>MC[c]||(MC[c]=new THREE.MeshLambertMaterial({color:c}));
+  const E=c=>MC['e'+c]||(MC['e'+c]=new THREE.MeshBasicMaterial({color:c}));
+  const add=(g,geo,mat,x,y,z)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);g.add(m);PROPMESH.push(m);return m;};
+  const pal=[0xd94a4a,0x3f8fd9,0x4fae5a,0xe8963a,0x9a5bd9,0x3fb8b0,0xd8c43a,0xe86fa8];
+  const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+  const TY=[
+   {box:null,f:(g,c)=>{add(g,cy(.05,.05,.45),M(0x333333),0,.25,0);add(g,bx(.55,.1,.55),M(c),0,.5,0);add(g,bx(.55,.65,.1),M(c),0,.85,-.25);add(g,cy(.28,.28,.04),M(0x222222),0,.03,0);}},   // 0 의자
+   {box:[.85,.45],f:(g,c)=>{add(g,bx(1.6,.08,.8),M(0x8a6a44),0,.75,0);[[-.75,-.35],[.75,-.35],[-.75,.35],[.75,.35]].forEach(([x,z])=>add(g,bx(.08,.75,.08),M(0x555555),x,.37,z));add(g,bx(.5,.38,.08),M(0x222222),0,1.1,-.1);add(g,bx(.42,.3,.02),E(0x7fe0ff),0,1.1,-.05);}}, // 1 책상+모니터
+   {box:null,f:(g,c)=>{add(g,cy(.28,.2,.4),M(0xb5653a),0,.2,0);add(g,sp(.42),M(0x3f9f4a),0,.8,0);add(g,sp(.3),M(0x56b85f),.2,1.15,.1);add(g,sp(.28),M(0x2f8a3f),-.2,1.05,-.1);}},   // 2 화분
+   {box:[.55,.5],f:(g,c)=>{add(g,bx(1.0,2.0,.9),M(c),0,1,0);add(g,bx(.7,1.1,.02),E(0xfff2a8),0,1.3,.46);add(g,bx(.3,.18,.02),M(0x222222),0,.5,.46);}},                                     // 3 자판기
+   {box:[.45,.35],f:(g,c)=>{add(g,bx(.8,1.5,.6),M(0x8f9aa8),0,.75,0);[.35,.75,1.15].forEach(y=>add(g,bx(.7,.02,.02),M(0x5a6470),0,y,.31));}},                                           // 4 서류 캐비닛
+   {box:null,f:(g,c)=>{[[0,0],[.5,.3]].forEach(([x,z])=>{add(g,cy(.02,.2,.7),M(0xff7a1a),x,.35,z);add(g,cy(.13,.13,.1),M(0xffffff),x,.4,z);add(g,bx(.5,.04,.5),M(0xff7a1a),x,.02,z);});}}, // 5 라바콘
+   {box:[1.0,.5],f:(g,c)=>{add(g,bx(2,.45,.9),M(c),0,.25,0);add(g,bx(2,.6,.25),M(c),0,.65,-.32);add(g,bx(.25,.35,.9),M(c),-.95,.55,0);add(g,bx(.25,.35,.9),M(c),.95,.55,0);}},          // 6 소파
+   {box:[.55,.4],f:(g,c)=>{add(g,bx(1,.5,.7),M(0x6b4a2a),0,.25,0);add(g,bx(.85,.6,.55),M(0x222222),0,.8,0);add(g,bx(.65,.45,.02),E(c),0,.8,.28);}},                                      // 7 TV
+   {box:[.75,.75],f:(g,c)=>{add(g,bx(.9,.9,.9),M(0xb9894f),0,.45,0);add(g,bx(.7,.7,.7),M(0xc99a60),.1,1.25,.05);add(g,bx(.6,.6,.6),M(0xa8793f),-.7,.3,.55);}},                           // 8 상자 더미
+   {box:null,f:(g,c)=>{add(g,cy(.04,.04,1.6),M(0x333333),0,.8,0);add(g,cy(.1,.34,.45),E(c),0,1.7,0);add(g,cy(.2,.2,.04),M(0x222222),0,.02,0);}},                                          // 9 스탠드 조명
+   {box:null,f:(g,c)=>{add(g,cy(.22,.18,.55),M(0x777777),0,.28,0);add(g,cy(.23,.23,.04),M(0x555555),0,.57,0);}},                                                                       // 10 쓰레기통
+   {box:[.7,.7],f:(g,c)=>{add(g,sp(.75),M(c),0,.75,0);add(g,sp(.4),M(0xffffff),0,1.2,.4);}},                                                                                            // 11 큰 공
+   {box:[.35,.35],f:(g,c)=>{add(g,cy(.28,.28,3.5),E(c),0,1.75,0);}},                                                                                                                     // 12 형광 기둥
+   {box:[.35,.35],f:(g,c)=>{add(g,cy(.22,.22,1.0),M(0xdfe9ef),0,.5,0);add(g,cy(.2,.2,.5),M(0x8fd0ff),0,1.25,0);}},                                                                       // 13 정수기
+   {box:[.9,.3],f:(g,c)=>{add(g,bx(1.8,2.0,.5),M(0x7a5a38),0,1,0);[.5,1.0,1.5].forEach(y=>add(g,bx(1.7,.06,.52),M(0x5d4326),0,y,0));[.3,.8,1.3].forEach((y,i)=>add(g,bx(.3,.35,.4),M(pal[(i*3+1)%8]),-.5+i*.5,y+.2,.02));}}, // 14 책장
+  ];
+  const LAND=[3,6,11,12,7,14,13];
+  const nbOf=(x,z)=>[[1,0],[-1,0],[0,1],[0,-1]].filter(([dx,dz])=>MAP[z+dz][x+dx]===0);
+  const tiles=[];for(let z=1;z<N-1;z++)for(let x=1;x<N-1;x++)if(!MAP[z][x]){const nb=nbOf(x,z);tiles.push({x,z,n:nb.length,nb});}
+  // 구역(3x3) 색 + 코드
+  const DCOL=[0xd94a4a,0xe8963a,0xd8c43a,0x4fae5a,0x3fb8b0,0x4a7fd9,0x7a5bd9,0xc04ab0,0x8a8a8a];
+  const dist=(x,z)=>Math.min(2,Math.floor(z*3/N))*3+Math.min(2,Math.floor(x*3/N));
+  // 꺾이는 길/갈림길 바닥에 구역 색 러그
+  const rp=DCOL.map(()=>[]);
+  tiles.forEach(t=>{
+    if(t.n===2&&t.nb[0][0]===-t.nb[1][0]&&t.nb[0][1]===-t.nb[1][1])return;
+    const cx=(t.x+.5)*T,cz=(t.z+.5)*T,q=1.4,y=.03;
+    rp[dist(t.x,t.z)].push(cx-q,y,cz-q,cx-q,y,cz+q,cx+q,y,cz+q,cx-q,y,cz-q,cx+q,y,cz+q,cx+q,y,cz-q);});
+  rp.forEach((a,i)=>{if(!a.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));g.computeVertexNormals();
+    grp.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:DCOL[i]})));});
+  const used=new Set(),big=new Set();
+  // 구역 표지판 (색 + 코드 A1~C3)
+  for(let di=0;di<9;di++){
+    const cx0=((di%3)+.5)*N/3,cz0=(Math.floor(di/3)+.5)*N/3;let best=null,bd=1e9;
+    tiles.forEach(t=>{if(dist(t.x,t.z)!==di)return;const d=Math.hypot(t.x-cx0,t.z-cz0);if(d<bd){bd=d;best=t;}});
+    if(!best)continue;
+    const code='ABC'[Math.floor(di/3)]+(di%3+1),hex='#'+DCOL[di].toString(16).padStart(6,'0');
+    const tex=cvsTex(256,160,(g,w,h)=>{g.fillStyle=hex;g.fillRect(0,0,w,h);g.strokeStyle='#fff';g.lineWidth=8;g.strokeRect(6,6,w-12,h-12);
+      g.fillStyle='#fff';g.font='bold 88px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(code,w/2,h/2+4);});
+    tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
+    const g=new THREE.Group(),cx=(best.x+.5)*T,cz=(best.z+.5)*T;
+    add(g,cy(.05,.05,2.2),M(0x333333),0,1.1,0);add(g,cy(.25,.25,.05),M(0x333333),0,.03,0);
+    const bd2=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.12),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));bd2.position.set(0,2.35,0);g.add(bd2);
+    g.position.set(cx,0,cz);g.rotation.y=(di%2)*Math.PI/2;grp.add(g);PROPBOX.push([cx,cz,.2,.2]);used.add(best.x+','+best.z);
+  }
+  // 소품 배치
+  let oi=0,order=shuf([...TY.keys()]);const nextType=()=>{if(oi&&oi%order.length===0)shuf(order);return order[oi++%order.length];};
+  const place=(t,type)=>{
+    const def=TY[type],g=new THREE.Group(),c=pal[Math.floor(r()*pal.length)];def.f(g,c);
+    let cx=(t.x+.5)*T,cz=(t.z+.5)*T,rot;
+    if(t.n===1){const [dx,dz]=t.nb[0];cx-=dx*1.2;cz-=dz*1.2;rot=Math.atan2(dx,dz);}
+    else{cx+=(r()-.5)*.5;cz+=(r()-.5)*.5;rot=Math.floor(r()*4)*Math.PI/2;}
+    g.position.set(cx,0,cz);g.rotation.y=rot;grp.add(g);used.add(t.x+','+t.z);
+    if(def.box){const sw=Math.abs(Math.round(rot/(Math.PI/2)))%2===1;PROPBOX.push([cx,cz,sw?def.box[1]:def.box[0],sw?def.box[0]:def.box[1]]);big.add(t.x+','+t.z);}
+  };
+  let li=0;
+  shuf(tiles.slice()).forEach(t=>{if(t.n===1&&!used.has(t.x+','+t.z)){place(t,LAND[li++%LAND.length]);}});
+  const target=Math.round(tiles.length*.2);let placed=0;
+  shuf(tiles.slice()).forEach(t=>{
+    if(placed>=target||used.has(t.x+','+t.z)||t.n===1)return;
+    let type=nextType(),def=TY[type];
+    if(def.box&&(t.n<3&&Math.max(def.box[0],def.box[1])>=.6||t.nb.some(([dx,dz])=>big.has((t.x+dx)+','+(t.z+dz)))))type=[0,2,5,9,10][Math.floor(r()*5)];
+    place(t,type);placed++;});
+}
 
 function buildWorld(seed){
   MAP=genMap(seed);OPEN=[];let n=0;
@@ -399,6 +470,7 @@ function buildWorld(seed){
   const lm=new THREE.InstancedMesh(new THREE.PlaneGeometry(2.2,.8),new THREE.MeshBasicMaterial({color:0xfffbe0}),lamps.length);
   lamps.forEach(([x,z],k)=>{d.position.set(x,H-.02,z);d.rotation.set(Math.PI/2,0,0);d.updateMatrix();lm.setMatrixAt(k,d.matrix);});
   mazeGroup.add(lm);
+  buildProps(seed);
 }
 
 /* ---------- 상태 ---------- */
@@ -412,8 +484,10 @@ const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
 
 const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
 const lobbyUI=()=>joined&&phase==='lobby'&&!paintMode;
-const canPaint=()=>phase==='lobby'||phase==='ended'||(phase==='hiding'&&me.role!=='seeker');
-const blind=()=>phase==='hiding'&&me.role==='seeker';
+const canPaint=()=>phase==='lobby'||phase==='ended'||phase==='hiding';
+const blind=()=>false;
+const fpv=()=>me.role==='seeker'&&(phase==='hiding'||phase==='seeking')&&!paintMode;
+const pitchRange=()=>fpv()?[-1.2,1.2]:[-.15,1];
 
 function addOther(d){
   if(others.has(d.id))return others.get(d.id);
@@ -426,11 +500,12 @@ function addOther(d){
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),ms);}
 function spawn(){
   me.y=0;me.vy=0;
-  if(phase==='lobby'){
+  if(lobbyWorld()){
     for(let n=0;n<40;n++){const x=LB.x0+2+Math.random()*(LB.w-4),z=LB.z0+2+Math.random()*(LB.d-4);if(!hitLobby(x,z,.7)){me.x=x;me.z=z;return;}}
     me.x=LB.x0+LB.w/2;me.z=LB.z0+LB.d-4;return;
   }
-  const [x,z]=OPEN[Math.floor(Math.random()*OPEN.length)];me.x=x;me.z=z;
+  for(let n=0;n<60;n++){const [x,z]=OPEN[Math.floor(Math.random()*OPEN.length)];if(!hitMaze(x,z,.7)){me.x=x;me.z=z;return;}}
+  const [x0,z0]=OPEN[0];me.x=x0;me.z=z0;
 }
 
 function renderHud(){
@@ -438,7 +513,7 @@ function renderHud(){
   const sk=rosterList.find(p=>p.id===seekerId);
   let t='';
   if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
-  else if(phase==='hiding')t=me.role==='seeker'?'당신은 술래! 잠시 기다리세요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
+  else if(phase==='hiding')t=me.role==='seeker'?'술래 대기실: 숨는 시간이 끝나면 시작해요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
   else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
   else if(phase==='loading')t='Loading...';
   else t='게임 종료';
@@ -486,7 +561,8 @@ socket.on('phase',d=>{
   phase=d.phase;left=d.left;seekerId=d.seekerId;
   applyEnv();snapT=performance.now()+500;
   if(phase==='loading'){spawn();setPose('stand');stroke=null;setPaint(false);$('poseBar').hidden=true;}
-  if(phase==='hiding'&&blind())setPaint(false);
+  if(phase==='hiding'&&me.role==='seeker'){spawn();me.pitch=0;}       // 술래는 숨는 동안 대기실에서 자유롭게
+  if(phase==='seeking'&&me.role==='seeker'){spawn();me.pitch=0;}      // 찾기 시작하면 백룸으로
   if(phase==='lobby'){me.found=false;spawn();}
   if(d.msg)toast(d.msg,d.phase==='ended'?8000:4000);
   renderHud();
@@ -513,12 +589,27 @@ const setMode=m=>{mode=m;if(m!=='pick')lastMode=m;
   $('mBrush').classList.toggle('on',m==='brush');$('mFill').classList.toggle('on',m==='fill');$('mPick').classList.toggle('on',m==='pick');
   canvas.style.cursor=m==='pick'?'crosshair':'';};
 $('mBrush').onclick=()=>setMode('brush');$('mFill').onclick=()=>setMode('fill');$('mPick').onclick=()=>setMode('pick');
-function doPick(){
-  const gl=renderer.getContext(),r=canvas.getBoundingClientRect();
-  const px=Math.floor((pickReq.x-r.left)*canvas.width/r.width),py=canvas.height-1-Math.floor((pickReq.y-r.top)*canvas.height/r.height);
-  pickReq=null;const b=new Uint8Array(4);gl.readPixels(px,py,1,1,gl.RGBA,gl.UNSIGNED_BYTE,b);
-  color='#'+[b[0],b[1],b[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
-  $('color').value=color;setMode(lastMode);toast('스포이드: '+color,1200);
+function pickColor(e){
+  const r=canvas.getBoundingClientRect();
+  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,camera);
+  const list=[avMe.meshes[0]];
+  ((lobbyGroup&&lobbyGroup.visible)?lobbyGroup:mazeGroup).traverse(o=>{if(o.isMesh)list.push(o);});
+  const h=ray.intersectObjects(list,false)[0];
+  setMode(lastMode);
+  if(!h){toast('색을 찾지 못했어요',1200);return;}
+  let rgb;
+  if(h.object===avMe.meshes[0]){                       // 내 캐릭터: 칠해진 픽셀 그대로
+    const f=avMe.faces[PARTNAMES[h.face.materialIndex]][0];
+    rgb=f.g.getImageData(Math.min(511,h.uv.x*512|0),Math.min(255,(1-h.uv.y)*256|0),1,1).data;
+  }else{
+    const m=Array.isArray(h.object.material)?h.object.material[0]:h.object.material,img=m.map&&m.map.image;
+    if(img&&img.getContext&&h.uv){                     // 텍스처: 조명/안개 없는 원본 픽셀
+      const t=m.map;let u=h.uv.x*t.repeat.x,v=h.uv.y*t.repeat.y;u-=Math.floor(u);v-=Math.floor(v);
+      rgb=img.getContext('2d').getImageData(Math.min(img.width-1,u*img.width|0),Math.min(img.height-1,(1-v)*img.height|0),1,1).data;
+    }else rgb=[Math.round(m.color.r*255),Math.round(m.color.g*255),Math.round(m.color.b*255)];
+  }
+  color='#'+[rgb[0],rgb[1],rgb[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+  $('color').value=color;toast('스포이드: '+color,1500);
 }
 
 addEventListener('keydown',e=>{
@@ -542,7 +633,7 @@ addEventListener('keyup',e=>keys[e.code]=false);
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 document.addEventListener('mousemove',e=>{
   if(document.pointerLockElement!==canvas||paintMode)return;
-  me.yaw-=e.movementX*.0025;me.pitch=Math.max(-.15,Math.min(1,me.pitch+e.movementY*.0025));
+  me.yaw-=e.movementX*.0025;{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch+e.movementY*.0025));}
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{if(paintMode)pDist=Math.max(2.5,Math.min(9,pDist+e.deltaY*.005));});
@@ -576,7 +667,7 @@ function paintAt(e,start){
 function flush(){dirty.forEach(p=>socket.emit('tex',{part:p,faces:serialize(avMe,p)}));dirty.clear();stroke=null;}
 canvas.addEventListener('pointerdown',e=>{
   if(!paintMode||e.button!==0||e.shiftKey)return;
-  if(mode==='pick'){pickReq={x:e.clientX,y:e.clientY};return;}
+  if(mode==='pick'){pickColor(e);return;}
   canvas.setPointerCapture(e.pointerId);paintAt(e,true);
 });
 canvas.addEventListener('pointermove',e=>{
@@ -589,7 +680,7 @@ canvas.addEventListener('pointerup',()=>{if(paintMode)flush();});
 function tryTag(){
   if(phase!=='seeking'||me.role!=='seeker')return;
   ndc.set(0,0);ray.setFromCamera(ndc,camera);
-  const wh=ray.intersectObject(walls,false)[0];
+  const wh=ray.intersectObjects([walls,...PROPMESH],false)[0];
   let best=null,bt=1e9;
   others.forEach(o=>{
     if(o.role!=='hider'||o.found)return;
@@ -618,28 +709,33 @@ function loop(now){
     if(!paintMode&&!blind()&&phase!=='loading'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
-      const SPD=SPEED*(run?1.4:1),dx=(-sy*iz+cy*ix)*SPD*dt,dz=(-cy*iz-sy*ix)*SPD*dt;moving=true;
+      const SPD=SPEED*(lobbyWorld()?1:.65)*(run?1.4:1),dx=(-sy*iz+cy*ix)*SPD*dt,dz=(-cy*iz-sy*ix)*SPD*dt;moving=true;
       if(!hitWall(me.x+dx,me.z,rad))me.x+=dx;
       if(!hitWall(me.x,me.z+dz,rad))me.z+=dz;
       me.ry=lerpAngle(me.ry,Math.atan2(dx,dz),1-Math.exp(-14*dt));
     }
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
     else{if(keys.ArrowLeft)me.yaw+=2.2*dt;if(keys.ArrowRight)me.yaw-=2.2*dt;
-      if(keys.ArrowUp)me.pitch=Math.max(-.15,me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(1,me.pitch+1.6*dt);}
+      if(keys.ArrowUp)me.pitch=Math.max(pitchRange()[0],me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(pitchRange()[1],me.pitch+1.6*dt);}
     if(keys.Space&&!paintMode&&!blind()&&phase!=='loading'&&me.y===0&&me.vy===0)me.vy=7.5*(.5+.5*s/.72);
     if(me.vy!==0||me.y>0){me.vy-=24*dt;me.y+=me.vy*dt;if(me.y<=0){me.y=0;me.vy=0;}}
-    avMe.moving=moving;avMe.run=moving&&run;avMe.air=me.y>.05;
+    avMe.moving=moving;avMe.run=moving&&run;avMe.air=me.y>.05;avMe.rate=lobbyWorld()?1:.65;
     avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
-    if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs);}
+    const fp=fpv();avMe.root.visible=!fp;{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch));}
+    $('cross').hidden=paintMode||!(fp||document.pointerLockElement===canvas);
+    if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}
+    else if(fp){const ey=me.y+2.2*s,cp=Math.cos(me.pitch);camera.position.set(me.x,ey,me.z);
+      camera.lookAt(me.x-Math.sin(me.yaw)*cp,ey-Math.sin(me.pitch),me.z-Math.cos(me.yaw)*cp);}
+    else{const cs=Math.max(.5,s/.72);camAt(1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));o.av.moving=!(now<snapT)&&Math.hypot(o.x-r.position.x,o.z-r.position.z)>.06;
       if(now<snapT){r.position.x=o.x;r.position.z=o.z;}else{r.position.x+=(o.x-r.position.x)*k;r.position.z+=(o.z-r.position.z)*k;}
-      r.position.y+=((o.y||0)-r.position.y)*Math.min(1,k*1.5);o.av.air=(o.y||0)>.05;o.av.run=!!o.run;
+      r.position.y+=((o.y||0)-r.position.y)*Math.min(1,k*1.5);o.av.air=(o.y||0)>.05;o.av.run=!!o.run;o.av.rate=phase==='lobby'?1:.65;
       r.rotation.y=lerpAngle(r.rotation.y,o.ry,k);o.av.target=o.pose;stepPose(o.av,dt);});
     if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,y:me.y,ry:me.ry,pose:me.pose,run:!!avMe.run});}
   }
-  renderer.render(scene,camera);if(pickReq)doPick();requestAnimationFrame(loop);
+  renderer.render(scene,camera);requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
