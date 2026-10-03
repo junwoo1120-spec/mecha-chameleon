@@ -47,7 +47,7 @@ button:disabled{opacity:.4;cursor:default}
 #loginForm input{width:260px;padding:12px 14px;font:inherit;font-size:18px;border-radius:6px;border:2px solid #f4efc8;background:#1a1608e0;color:#f4efc8}
 #loginForm button{font-size:18px;padding:12px 26px}
 #loginHint{font-size:13px;color:#f4efc8;opacity:.8;text-shadow:0 1px 4px #000}
-#titleFig{width:min(30vw,340px);height:auto;flex:none}
+#titleFig{width:min(36vw,440px);height:auto;flex:none}
 @media (max-width:800px){#titleFig{display:none}}
 #ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
@@ -57,7 +57,7 @@ button:disabled{opacity:.4;cursor:default}
 <div id="roster" class="ui"></div>
 <div id="cross" class="ui" hidden>+</div>
 <div id="toast" class="ui"></div>
-<div id="help" class="ui">WASD 이동 · Ctrl 달리기 · 방향키 시점 · Shift 마우스 잠금 · R 포즈 · E 꾸미기 · 술래: 클릭/F로 잡기</div>
+<div id="help" class="ui">WASD 이동 · Ctrl 달리기 · 방향키 시점 · Space 점프 · Shift 마우스 잠금 · R 포즈 · E 꾸미기 · 술래: 클릭/F로 잡기</div>
 <button id="startBtn" hidden>게임 시작</button>
 <div id="loading" hidden>Loading...</div>
 <div id="dev" hidden><b>개발자 테스트</b> <span class="small">(키 [ ] ; ')</span><br>
@@ -86,27 +86,38 @@ button:disabled{opacity:.4;cursor:default}
       <div id="loginForm"><input id="nick" maxlength="12" placeholder="닉네임을 입력하세요" autocomplete="off"><button id="enter">입장</button></div>
       <div id="loginHint">Enter로 입장 · 숨기 2분 → 찾기 5분 · 술래는 랜덤</div>
     </div>
-    <svg id="titleFig" viewBox="0 0 300 430">
+    <svg id="titleFig" viewBox="0 0 600 680">
       <defs>
-        <pattern id="brk" width="60" height="30" patternUnits="userSpaceOnUse">
-          <rect width="60" height="30" fill="#b4533d"/>
-          <path d="M0 0H60M0 15H60M0 30H60M15 0V15M45 15V30" stroke="#e6ded0" stroke-width="3" fill="none"/>
+        <pattern id="brk" width="70" height="34" patternUnits="userSpaceOnUse">
+          <rect width="70" height="34" fill="#b4533d"/>
+          <path d="M0 0H70M0 17H70M0 34H70M17 0V17M52 17V34" stroke="#e6ded0" stroke-width="3.5" fill="none"/>
         </pattern>
-        <filter id="shd" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="6" dy="8" stdDeviation="6" flood-opacity=".5"/></filter>
+        <linearGradient id="fadeG" gradientUnits="userSpaceOnUse" x1="330" y1="0" x2="460" y2="0">
+          <stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/>
+        </linearGradient>
+        <mask id="fadeM" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="680"><rect width="600" height="680" fill="url(#fadeG)"/></mask>
+        <filter id="shd" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="6" dy="8" stdDeviation="7" flood-opacity=".5"/></filter>
       </defs>
-      <g filter="url(#shd)" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M110 150 L35 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
-        <path d="M190 150 L265 235" stroke="url(#brk)" stroke-width="44" fill="none"/>
-        <path d="M128 285 L112 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
-        <path d="M172 285 L188 400" stroke="url(#brk)" stroke-width="50" fill="none"/>
-        <rect x="95" y="115" width="110" height="190" rx="48" fill="url(#brk)"/>
-        <circle cx="150" cy="68" r="54" fill="#f6f6f2"/>
-        <circle cx="130" cy="60" r="5" fill="#222"/><circle cx="170" cy="60" r="5" fill="#222"/>
-        <path d="M122 82 Q150 108 178 82" stroke="#222" stroke-width="6" fill="none"/>
+      <g filter="url(#shd)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <g stroke="url(#brk)">
+          <path d="M310 450 L150 625" stroke-width="86"/><path d="M390 440 L535 615" stroke-width="82"/>
+          <path d="M300 195 L25 160" stroke-width="52"/><path d="M430 220 L585 178" stroke-width="58"/>
+          <rect x="250" y="170" width="195" height="300" rx="80" fill="url(#brk)" stroke="none"/>
+        </g>
+        <g stroke="#f6f6f2" mask="url(#fadeM)">
+          <path d="M310 450 L150 625" stroke-width="86"/><path d="M390 440 L535 615" stroke-width="82"/>
+          <path d="M300 195 L25 160" stroke-width="52"/><path d="M430 220 L585 178" stroke-width="58"/>
+          <rect x="250" y="170" width="195" height="300" rx="80" fill="#f6f6f2" stroke="none"/>
+        </g>
+        <path d="M455 262 q8 -26 18 -6 q10 18 24 -12" stroke="#b4533d" stroke-width="8" opacity=".75"/>
+        <path d="M365 140 L365 200" stroke="#f6f6f2" stroke-width="70"/>
+        <circle cx="365" cy="108" r="60" fill="#f6f6f2" stroke="none"/>
+        <path d="M338 90 v16 M404 94 v16" stroke="#1a1a1a" stroke-width="7"/>
+        <path d="M330 124 Q372 160 424 130" stroke="#1a1a1a" stroke-width="7"/>
       </g>
     </svg>
   </div>
-  <div id="ver">v7</div>
+  <div id="ver">v9</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -273,15 +284,18 @@ function buildAvatar(){
 function stepPose(av,dt){
   const t=(POSES[av.target]||POSES.stand).v,k=1-Math.exp(-12*dt),c=av.cur,p=av.piv;
   for(let i=0;i<20;i++)c[i]+=(t[i]-c[i])*k;
-  // 걷기/달리기 모션 (기본 자세일 때만)
-  const want=(av.moving&&av.target==='stand')?1:0;
-  av.walkW=(av.walkW||0)+(want-(av.walkW||0))*(1-Math.exp(-10*dt));
+  const st=av.target==='stand',want=(av.moving&&st)?1:0,sm=(v,to,r)=>v+(to-v)*(1-Math.exp(-r*dt));
+  av.walkW=sm(av.walkW||0,want,10);
+  av.runW=sm(av.runW||0,(want&&av.run&&!av.air)?1:0,9);   // 달릴 때: 팔을 위로
+  av.airW=sm(av.airW||0,(av.air&&st)?1:0,14);             // 점프 중: 팔 위로 + 무릎 접기
   av.phase=(av.phase||0)+dt*(av.run?15:10.5)*(want?1:.3);
-  const w=av.walkW,A=av.run?1.25:1,s1=Math.sin(av.phase),s2=-s1,k1=Math.max(0,Math.cos(av.phase)),k2=Math.max(0,-Math.cos(av.phase));
-  p.shL.rotation.set(c[0]+.7*A*w*s1,0,c[1]);p.elL.rotation.set(c[2]-.35*A*w,0,c[3]);
-  p.shR.rotation.set(c[4]+.7*A*w*s2,0,c[5]);p.elR.rotation.set(c[6]-.35*A*w,0,c[7]);
-  p.hipL.rotation.set(c[8]-.75*A*w*s1,0,c[9]);p.knL.rotation.x=c[10]+.9*A*w*k1;
-  p.hipR.rotation.set(c[11]-.75*A*w*s2,0,c[12]);p.knR.rotation.x=c[13]+.9*A*w*k2;
+  const w=av.walkW,rW=av.runW,aW=av.airW,up=Math.max(rW,aW),A=av.run?1.25:1;
+  const s1=Math.sin(av.phase),s2=-s1,k1=Math.max(0,Math.cos(av.phase)),k2=Math.max(0,-Math.cos(av.phase));
+  const swing=.7*A*w*(1-up),wig=.14*Math.sin(av.phase*2)*rW,armZ=2.55*up;
+  p.shL.rotation.set(c[0]+swing*s1,0,c[1]-armZ+wig);p.elL.rotation.set(c[2]-.35*A*w*(1-up),0,c[3]);
+  p.shR.rotation.set(c[4]+swing*s2,0,c[5]+armZ-wig);p.elR.rotation.set(c[6]-.35*A*w*(1-up),0,c[7]);
+  p.hipL.rotation.set(c[8]-.75*A*w*s1-.55*aW,0,c[9]);p.knL.rotation.x=c[10]+.9*A*w*k1+1.0*aW;
+  p.hipR.rotation.set(c[11]-.75*A*w*s2-.55*aW,0,c[12]);p.knR.rotation.x=c[13]+.9*A*w*k2+1.0*aW;
   p.head.rotation.x=c[14];p.torso.rotation.x=c[15]+(av.run?.14:0)*w;
   av.rig.position.set(c[19],c[16]+Math.abs(s1)*.035*w,0);av.rig.rotation.set(c[17],0,c[18]);
 }
@@ -388,7 +402,7 @@ function buildWorld(seed){
 }
 
 /* ---------- 상태 ---------- */
-const me={id:null,x:0,z:0,ry:0,yaw:0,pitch:.35,pose:'stand',role:'hider',found:false};
+const me={id:null,y:0,vy:0,x:0,z:0,ry:0,yaw:0,pitch:.35,pose:'stand',role:'hider',found:false};
 let phase='lobby',left=0,seekerId=null,avMe=null,joined=false,rosterList=[],cfg={hide:120,seek:300};
 const kor=s=>s<60?`${s}초`:s%60?`${Math.floor(s/60)}분 ${s%60}초`:`${s/60}분`;
 const others=new Map();
@@ -404,13 +418,14 @@ const blind=()=>phase==='hiding'&&me.role==='seeker';
 function addOther(d){
   if(others.has(d.id))return others.get(d.id);
   const av=buildAvatar();av.meshes.forEach(m=>m.userData.owner=d.id);
-  const o={id:d.id,nick:d.nick,role:d.role||'hider',found:!!d.found,av,x:d.x||0,z:d.z||0,ry:d.ry||0,pose:d.pose||'stand'};
+  const o={id:d.id,nick:d.nick,role:d.role||'hider',found:!!d.found,av,x:d.x||0,z:d.z||0,y:d.y||0,run:!!d.run,ry:d.ry||0,pose:d.pose||'stand'};
   av.root.position.set(o.x,0,o.z);scene.add(av.root);others.set(d.id,o);
   if(d.tex)for(const p in d.tex)applyFaces(av,p,d.tex[p]);
   return o;
 }
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),ms);}
 function spawn(){
+  me.y=0;me.vy=0;
   if(phase==='lobby'){
     for(let n=0;n<40;n++){const x=LB.x0+2+Math.random()*(LB.w-4),z=LB.z0+2+Math.random()*(LB.d-4);if(!hitLobby(x,z,.7)){me.x=x;me.z=z;return;}}
     me.x=LB.x0+LB.w/2;me.z=LB.z0+LB.d-4;return;
@@ -478,7 +493,7 @@ socket.on('phase',d=>{
 });
 socket.on('cfg',d=>{cfg=d;renderHud();});
 socket.on('tick',d=>{left=d.left;renderHud();});
-socket.on('states',list=>list.forEach(s=>{const o=others.get(s.id);if(o){o.x=s.x;o.z=s.z;o.ry=s.ry;o.pose=s.pose;}}));
+socket.on('states',list=>list.forEach(s=>{const o=others.get(s.id);if(o){o.x=s.x;o.z=s.z;o.y=s.y;o.run=s.run;o.ry=s.ry;o.pose=s.pose;}}));
 socket.on('tex',d=>{const o=others.get(d.id);if(o)applyFaces(o.av,d.part,d.faces);});
 socket.on('found',d=>{toast(d.id===me.id?'술래에게 들켰어요!':`${d.nick} 발견!`);});
 
@@ -510,7 +525,7 @@ addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'&&e.target.type==='text')return;
   keys[e.code]=true;
   if(joined&&(e.ctrlKey||e.code.startsWith('Arrow')||e.code==='Space'))e.preventDefault();
-  if((e.code==='Space'||e.code==='KeyF')&&joined&&!paintMode&&!e.repeat)tryTag();
+  if(e.code==='KeyF'&&joined&&!paintMode&&!e.repeat)tryTag();
   if(e.code==='KeyE'&&joined)setPaint(!paintMode);
   if(e.code==='KeyR'&&joined&&!e.repeat)$('poseBar').hidden=!$('poseBar').hidden;
   if(e.code==='KeyI'&&paintMode)setMode('pick');
@@ -578,7 +593,7 @@ function tryTag(){
   let best=null,bt=1e9;
   others.forEach(o=>{
     if(o.role!=='hider'||o.found)return;
-    const sc=o.av.root.scale.x,c=new THREE.Vector3(o.av.root.position.x,1.1*sc,o.av.root.position.z);
+    const sc=o.av.root.scale.x,c=new THREE.Vector3(o.av.root.position.x,o.av.root.position.y+1.1*sc,o.av.root.position.z);
     const t=c.clone().sub(ray.ray.origin).dot(ray.ray.direction);
     if(t<0||t>12||(wh&&wh.distance<t))return;
     if(ray.ray.distanceToPoint(c)<Math.max(.4,1.3*sc)&&t<bt){bt=t;best=o;}
@@ -611,15 +626,18 @@ function loop(now){
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;}
     else{if(keys.ArrowLeft)me.yaw+=2.2*dt;if(keys.ArrowRight)me.yaw-=2.2*dt;
       if(keys.ArrowUp)me.pitch=Math.max(-.15,me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(1,me.pitch+1.6*dt);}
-    avMe.moving=moving;avMe.run=moving&&run;
-    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,0,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
-    if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs,me.yaw,me.pitch,4*cs);}
+    if(keys.Space&&!paintMode&&!blind()&&phase!=='loading'&&me.y===0&&me.vy===0)me.vy=7.5*(.5+.5*s/.72);
+    if(me.vy!==0||me.y>0){me.vy-=24*dt;me.y+=me.vy*dt;if(me.y<=0){me.y=0;me.vy=0;}}
+    avMe.moving=moving;avMe.run=moving&&run;avMe.air=me.y>.05;
+    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
+    if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}else{const cs=Math.max(.5,s/.72);camAt(1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));o.av.moving=!(now<snapT)&&Math.hypot(o.x-r.position.x,o.z-r.position.z)>.06;
       if(now<snapT){r.position.x=o.x;r.position.z=o.z;}else{r.position.x+=(o.x-r.position.x)*k;r.position.z+=(o.z-r.position.z)*k;}
+      r.position.y+=((o.y||0)-r.position.y)*Math.min(1,k*1.5);o.av.air=(o.y||0)>.05;o.av.run=!!o.run;
       r.rotation.y=lerpAngle(r.rotation.y,o.ry,k);o.av.target=o.pose;stepPose(o.av,dt);});
-    if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,ry:me.ry,pose:me.pose});}
+    if(now-lastSend>70){lastSend=now;socket.emit('state',{x:me.x,z:me.z,y:me.y,ry:me.ry,pose:me.pose,run:!!avMe.run});}
   }
   renderer.render(scene,camera);if(pickReq)doPick();requestAnimationFrame(loop);
 }
