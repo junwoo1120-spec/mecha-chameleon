@@ -106,7 +106,7 @@ button:disabled{opacity:.4;cursor:default}
       </g>
     </svg>
   </div>
-  <div id="ver">v12</div>
+  <div id="ver">v13</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -124,10 +124,10 @@ const P=o=>{o={...BASEP,...o};
   return [...o.al,...o.ar,...o.ll,...o.lr,o.h||0,o.t||0,o.y||0,o.rx||0,o.rz||0,o.ox||0,o.oz||0].map((v,i)=>(i===16||i===19||i===20)?v:v*D);};
 const POSES={
   stand:{n:'기본',v:P({})},
-  lie:{n:'대자로 눕기',v:P({rx:-90,y:.28,oz:1.2,al:[0,-115,0,0],ar:[0,115,0,0],ll:[0,-28,0],lr:[0,28,0]})},
+  lie:{n:'눕기',v:P({rx:-90,y:.28,oz:1.2,al:[0,-115,0,0],ar:[0,115,0,0],ll:[0,-28,0],lr:[0,28,0]})},
   hunch:{n:'숙이기',v:P({t:55,h:15,ll:[-35,-2,45],lr:[-35,2,45],y:-.1,al:[-20,-6,0,0],ar:[-140,0,0,-100]})},
   flex:{n:'알통',v:P({al:[0,-90,0,-90],ar:[0,90,0,90]})},
-  ring:{n:'머리 위 원',v:P({al:[0,-160,0,-60],ar:[0,160,0,60]})},
+  ring:{n:'동그라미',v:P({al:[0,-160,0,-60],ar:[0,160,0,60]})},
   leg:{n:'한 발 서기',v:P({al:[0,-120,0,0],ar:[0,120,0,0],lr:[-80,2,90]})},
   star:{n:'별',v:P({al:[0,-150,0,0],ar:[0,150,0,0],ll:[0,-35,0],lr:[0,35,0],y:-.2})},
   curl:{n:'웅크리기',v:P({ll:[-30,-3,120],lr:[-30,3,120],t:100,al:[-190,-6,0,0],ar:[-190,6,0,0],y:-.52})},
@@ -241,7 +241,7 @@ function makeFace(){
   const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');
   g.fillStyle=BASE;g.fillRect(0,0,512,256);
   const t=new THREE.CanvasTexture(c);
-  return {c,g,t,m:new THREE.MeshLambertMaterial({map:t,side:THREE.FrontSide,skinning:true})};
+  return {c,g,t,m:new THREE.MeshBasicMaterial({map:t,side:THREE.FrontSide,skinning:true})};
 }
 function buildAvatar(){
   if(!BODYGEO){
@@ -269,7 +269,7 @@ function buildAvatar(){
   av.meshes.push(mesh);
   av.beacon=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0xff2a2a}));
   av.beacon.position.y=3.0;av.beacon.visible=false;root.add(av.beacon);
-  const gp=new THREE.Group(),gn=makeGun();gn.scale.setScalar(1.1);gn.position.z=.15;gp.add(gn);gp.position.set(.45,1.55,.15);gp.visible=false;root.add(gp);av.gun=gp;
+  const gp=new THREE.Group(),gn=makeGun();gn.scale.setScalar(.85);gn.position.z=.5;gp.add(gn);gp.position.set(.45,1.55,.15);gp.visible=false;root.add(gp);av.gun=gp;
   return av;
 }
 function stepPose(av,dt){
@@ -354,7 +354,7 @@ function applyEnv(){
   mazeGroup.visible=!lob;if(lobbyGroup)lobbyGroup.visible=lob;
   scene.background.set(lob?0xbfe3ff:0xc8b75a);scene.fog=lob?null:mazeFog;
   hemi.color.set(lob?0xffffff:0xfff3b0);hemi.groundColor.set(lob?0xc4c9d1:0x8a7a3a);hemi.intensity=lob?.55:.95;amb.intensity=lob?.45:.3;
-  plight.intensity=lob?0:.7;
+  plight.intensity=0;
 }
 
 const cvsTex=(w,h,fn,rep)=>{const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);
@@ -368,7 +368,7 @@ const mazeGroup=new THREE.Group();scene.add(mazeGroup);
 const hemi=new THREE.HemisphereLight(0xfff3b0,0x8a7a3a,.95),amb=new THREE.AmbientLight(0xffffff,.3);scene.add(hemi,amb);
 const plight=new THREE.PointLight(0xfff1b0,.7,14);scene.add(plight);
 scene.add(camera);
-const vmRoot=new THREE.Group(),vm=makeGun();vm.rotation.y=Math.PI;vmRoot.add(vm);vmRoot.position.set(.24,-.22,-.55);vmRoot.scale.setScalar(.75);vmRoot.visible=false;
+const vmRoot=new THREE.Group(),vm=makeGun();vm.rotation.y=Math.PI;vmRoot.add(vm);vmRoot.position.set(.27,-.25,-.5);vmRoot.scale.setScalar(.6);vmRoot.visible=false;
 vm.traverse(o=>{if(o.isMesh){o.material.depthTest=false;o.renderOrder=999;}});camera.add(vmRoot);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
@@ -594,24 +594,31 @@ const setMode=m=>{mode=m;if(m!=='pick')lastMode=m;
   $('mBrush').classList.toggle('on',m==='brush');$('mFill').classList.toggle('on',m==='fill');$('mPick').classList.toggle('on',m==='pick');
   canvas.style.cursor=m==='pick'?'crosshair':'';};
 $('mBrush').onclick=()=>setMode('brush');$('mFill').onclick=()=>setMode('fill');$('mPick').onclick=()=>setMode('pick');
+// 월드 법선에서 받는 조명 계수 (반구광 + 환경광). 캐릭터는 조명을 받지 않으니 '보이는 색'을 그대로 칠하면 위장이 맞는다.
+function litRGB(n){
+  const w=.5*n.y+.5,I=hemi.intensity,a=amb.intensity,s=hemi.color,g=hemi.groundColor,c=amb.color;
+  return [(g.r+(s.r-g.r)*w)*I+c.r*a,(g.g+(s.g-g.g)*w)*I+c.g*a,(g.b+(s.b-g.b)*w)*I+c.b*a];
+}
 function pickColor(e){
-  const r=canvas.getBoundingClientRect();
-  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,camera);
-  const list=[avMe.meshes[0]];
+  const ah=pickAvatar(e),list=[];
   ((lobbyGroup&&lobbyGroup.visible)?lobbyGroup:mazeGroup).traverse(o=>{if(o.isMesh)list.push(o);});
   const h=ray.intersectObjects(list,false)[0];
   setMode(lastMode);
-  if(!h){toast('색을 찾지 못했어요',1200);return;}
+  if(!ah&&!h){toast('색을 찾지 못했어요',1200);return;}
   let rgb;
-  if(h.object===avMe.meshes[0]){                       // 내 캐릭터: 칠해진 픽셀 그대로
-    const f=avMe.faces[PARTNAMES[h.face.materialIndex]][0];
-    rgb=f.g.getImageData(Math.min(511,h.uv.x*512|0),Math.min(255,(1-h.uv.y)*256|0),1,1).data;
+  if(ah&&(!h||ah.dist<h.distance)){                    // 내 캐릭터: 칠해진 픽셀 그대로 (조명 없이 보임)
+    const f=avMe.faces[PARTNAMES[ah.face.materialIndex]][0];
+    rgb=Array.from(f.g.getImageData(Math.min(511,ah.uv.x*512|0),Math.min(255,(1-ah.uv.y)*256|0),1,1).data);
   }else{
     const m=Array.isArray(h.object.material)?h.object.material[0]:h.object.material,img=m.map&&m.map.image;
-    if(img&&img.getContext&&h.uv){                     // 텍스처: 조명/안개 없는 원본 픽셀
+    if(img&&img.getContext&&h.uv){                     // 텍스처 원본 픽셀
       const t=m.map;let u=h.uv.x*t.repeat.x,v=h.uv.y*t.repeat.y;u-=Math.floor(u);v-=Math.floor(v);
-      rgb=img.getContext('2d').getImageData(Math.min(img.width-1,u*img.width|0),Math.min(img.height-1,(1-v)*img.height|0),1,1).data;
+      rgb=Array.from(img.getContext('2d').getImageData(Math.min(img.width-1,u*img.width|0),Math.min(img.height-1,(1-v)*img.height|0),1,1).data);
     }else rgb=[Math.round(m.color.r*255),Math.round(m.color.g*255),Math.round(m.color.b*255)];
+    if(m.isMeshLambertMaterial){                       // 조명 받는 면: 화면에 보이는 색으로 보정
+      const nrm=(h.face?h.face.normal.clone():new THREE.Vector3(0,1,0)).transformDirection(h.object.matrixWorld),L=litRGB(nrm);
+      rgb=rgb.slice(0,3).map((v,i)=>Math.max(0,Math.min(255,Math.round(v*L[i]))));
+    }
   }
   color='#'+[rgb[0],rgb[1],rgb[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
   $('color').value=color;toast('스포이드: '+color,1500);
@@ -649,11 +656,44 @@ canvas.addEventListener('mousedown',e=>{
 });
 document.addEventListener('pointerlockchange',()=>{$('cross').hidden=paintMode||document.pointerLockElement!==canvas;});
 
-function pick(e){
-  const r=canvas.getBoundingClientRect();
-  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-  ray.setFromCamera(ndc,camera);return ray.intersectObjects(avMe.meshes,false)[0];
+const SK={av:null,key:'',pos:null};
+function skinnedPositions(av){
+  const mesh=av.meshes[0],key=av.cur.map(v=>Math.round(v*1000)).join(',')+'|'+[av.walkW,av.runW,av.airW,av.aimW].map(v=>Math.round((v||0)*100)).join(',');
+  if(SK.av===av&&SK.key===key&&SK.pos)return SK.pos;
+  mesh.updateMatrixWorld(true);mesh.skeleton.update();
+  const bm=mesh.skeleton.boneMatrices,nb=mesh.skeleton.bones.length,C=[];
+  for(let k=0;k<nb;k++)C.push(new THREE.Matrix4().copy(mesh.bindMatrixInverse).multiply(new THREE.Matrix4().fromArray(bm,16*k)).multiply(mesh.bindMatrix).elements);
+  const A=BODYGEO.attributes,po=A.position.array,si=A.skinIndex.array,sw=A.skinWeight.array,n=po.length/3,out=new Float32Array(po.length);
+  for(let i=0;i<n;i++){const x=po[i*3],y=po[i*3+1],z=po[i*3+2];let X=0,Y=0,Z=0;
+    for(let q=0;q<4;q++){const w=sw[i*4+q];if(!w)continue;const e=C[si[i*4+q]];
+      X+=w*(e[0]*x+e[4]*y+e[8]*z+e[12]);Y+=w*(e[1]*x+e[5]*y+e[9]*z+e[13]);Z+=w*(e[2]*x+e[6]*y+e[10]*z+e[14]);}
+    out[i*3]=X;out[i*3+1]=Y;out[i*3+2]=Z;}
+  SK.av=av;SK.key=key;SK.pos=out;return out;
 }
+// 현재 자세(스키닝 적용된 모습) 기준으로 내 캐릭터를 정확히 찍어서 {uv, face.materialIndex, dist} 반환
+function pickAvatar(e){
+  const mesh=avMe.meshes[0],P=skinnedPositions(avMe),uvA=BODYGEO.attributes.uv.array;
+  camera.updateMatrixWorld();mesh.updateMatrixWorld(true);
+  const r=canvas.getBoundingClientRect();
+  ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,camera);
+  const inv=new THREE.Matrix4().copy(mesh.matrixWorld).invert(),o=ray.ray.origin.clone().applyMatrix4(inv),d=ray.ray.direction.clone().transformDirection(inv);
+  let bt=1e9,bi=-1,bu=0,bv=0;
+  const nt=P.length/9;
+  for(let t=0;t<nt;t++){
+    const i=t*9,ax=P[i],ay=P[i+1],az=P[i+2],e1x=P[i+3]-ax,e1y=P[i+4]-ay,e1z=P[i+5]-az,e2x=P[i+6]-ax,e2y=P[i+7]-ay,e2z=P[i+8]-az;
+    const px=d.y*e2z-d.z*e2y,py=d.z*e2x-d.x*e2z,pz=d.x*e2y-d.y*e2x,det=e1x*px+e1y*py+e1z*pz;
+    if(Math.abs(det)<1e-12)continue;const id=1/det,tx=o.x-ax,ty=o.y-ay,tz=o.z-az,u=(tx*px+ty*py+tz*pz)*id;
+    if(u<0||u>1)continue;const qx=ty*e1z-tz*e1y,qy=tz*e1x-tx*e1z,qz=tx*e1y-ty*e1x,v=(d.x*qx+d.y*qy+d.z*qz)*id;
+    if(v<0||u+v>1)continue;const tt=(e2x*qx+e2y*qy+e2z*qz)*id;
+    if(tt>1e-6&&tt<bt){bt=tt;bi=t;bu=u;bv=v;}
+  }
+  if(bi<0)return null;
+  const w0=1-bu-bv,k=bi*3,ux=w0*uvA[k*2]+bu*uvA[(k+1)*2]+bv*uvA[(k+2)*2],uy=w0*uvA[k*2+1]+bu*uvA[(k+1)*2+1]+bv*uvA[(k+2)*2+1];
+  let mi=0;for(const g of BODYGEO.groups)if(k>=g.start&&k<g.start+g.count){mi=g.materialIndex;break;}
+  const hp=o.clone().addScaledVector(d,bt).applyMatrix4(mesh.matrixWorld);
+  return {uv:{x:ux,y:uy},face:{materialIndex:mi},dist:camera.position.distanceTo(hp)};
+}
+function pick(e){return pickAvatar(e);}
 function paintAt(e,start){
   if(!canPaint())return;
   const h=pick(e);if(!h){stroke=null;return;}
@@ -685,13 +725,36 @@ canvas.addEventListener('pointerup',()=>{if(paintMode)flush();});
 /* ---------- 술래 페인트 총 / 페인트 자국 ---------- */
 function makeGun(){
   const g=new THREE.Group(),M=c=>new THREE.MeshLambertMaterial({color:c});
-  const add=(geo,mat,x,y,z,rx)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);if(rx)m.rotation.x=rx;g.add(m);return m;};
-  add(new THREE.BoxGeometry(.1,.14,.5),M(0x2b2f36),0,0,.1);
-  add(new THREE.CylinderGeometry(.03,.03,.5,10),M(0x9aa0aa),0,.03,.55,Math.PI/2);
-  add(new THREE.BoxGeometry(.08,.2,.1),M(0x2b2f36),0,-.15,-.05,.25);
-  add(new THREE.SphereGeometry(.09,10,8),M(0xff7a1a),0,.14,.12);
-  add(new THREE.BoxGeometry(.05,.05,.2),M(0xdddddd),0,.09,.28);
-  const mz=new THREE.Object3D();mz.position.set(0,.03,.82);g.add(mz);g.userData.muzzle=mz;
+  const box=(w,h,d,c,x,y,z,rx)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));m.position.set(x,y,z);if(rx)m.rotation.x=rx;g.add(m);return m;};
+  const cyl=(r,len,c,x,y,z)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,10),M(c));m.rotation.x=Math.PI/2;m.position.set(x,y,z);g.add(m);return m;};
+  const blob=(r,sx,sy,sz,c,x,y,z)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),M(c));m.scale.set(sx,sy,sz);m.position.set(x,y,z);g.add(m);return m;};
+  const D1=0x23262b,D2=0x30343b,GR=0x7ed321,RD=0xd9302b;
+  cyl(.028,.9,D1,0,.05,.38);            // 위쪽 총열
+  cyl(.03,.62,D1,0,-.012,.2);           // 아래쪽 탄창 튜브
+  cyl(.036,.07,D2,0,.05,.82);           // 총구 링
+  cyl(.036,.07,D2,0,-.012,.5);          // 튜브 끝 캡
+  box(.012,.03,.012,D2,0,.092,.78);     // 가늠쇠
+  box(.1,.085,.28,D2,0,-.005,.34);      // 펌프 손잡이(포엔드)
+  [.22,.27,.32,.37,.42,.47].forEach(z=>box(.104,.088,.012,0x14161a,0,-.005,z-.02));
+  box(.1,.075,.46,GR,0,.07,-.12);       // 상부 리시버 (초록)
+  box(.095,.07,.4,D1,0,0,-.12);         // 하부 리시버
+  box(.085,.09,.24,GR,0,.06,-.46);      // 개머리판
+  box(.092,.11,.05,RD,0,.06,-.6);       // 빨간 끝
+  box(.075,.2,.09,D1,0,-.14,-.2,.3);    // 권총 손잡이
+  [-.12,-.15,-.18].forEach(y=>box(.079,.012,.092,0x14161a,0,y,-.2+(-.12-y)*.3,.3));
+  box(.012,.04,.06,D2,0,-.07,-.05);     // 방아쇠
+  // 형광 페인트 얼룩 (양쪽 면 + 위)
+  [-1,1].forEach(sx=>{
+    blob(.04,.25,1,1,0xff8c1a,sx*.052,.07,-.22);      // 주황 (리시버)
+    blob(.035,.25,1,1,0x9b30d9,sx*.054,0,.3);          // 보라 (포엔드)
+    blob(.03,.25,1,1,0xff8c1a,sx*.054,-.012,.42);      // 주황 (포엔드)
+    [.2,.25,.3].forEach((z,i)=>box(.006,.06,.012,0x35b6ff,sx*.053,.0,z+.0).rotation.z=.15*(i-1)); // 파란 줄무늬
+    blob(.03,.25,1,1,0xe0309a,sx*.05,.03,-.02);        // 분홍
+  });
+  blob(.04,1,.25,1,0xff8c1a,0,.108,-.3);               // 주황 (윗면)
+  blob(.035,1,.25,1,0x9b30d9,0,.118,-.6);              // 보라 (빨간 끝)
+  blob(.03,1,.25,1,0x35b6ff,0,.108,-.05);              // 파랑 (윗면)
+  const mz=new THREE.Object3D();mz.position.set(0,.05,.9);g.add(mz);g.userData.muzzle=mz;
   return g;
 }
 const armedRole=r=>r==='seeker'&&(phase==='hiding'||phase==='seeking'||phase==='ended');
@@ -778,8 +841,8 @@ function loop(now){
     avMe.moving=moving;avMe.run=moving&&run;avMe.air=me.y>.05;avMe.rate=lobbyWorld()?1.3:.845;
     if(fpv()){me.ry=me.yaw+Math.PI;if(keys.Space)fire(now);}
     avMe.armed=avMe.gun.visible=armedRole(me.role);avMe.gun.rotation.x=me.pitch;
-    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.root.rotation.y=me.ry;avMe.target=paintMode?'stand':me.pose;stepPose(avMe,dt);
-    const fp=fpv();avMe.root.visible=!fp;vmRoot.visible=fp;kick=Math.max(0,kick-dt*7);vmRoot.position.z=-.55+kick*.09;vmRoot.rotation.x=kick*.12;updateFx(dt);{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch));}
+    avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.root.rotation.y=me.ry;avMe.target=me.pose;stepPose(avMe,dt);
+    const fp=fpv();avMe.root.visible=!fp;vmRoot.visible=fp;kick=Math.max(0,kick-dt*7);vmRoot.position.z=-.5+kick*.09;vmRoot.rotation.x=kick*.12;updateFx(dt);{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch));}
     $('cross').hidden=paintMode||!(fp||document.pointerLockElement===canvas);
     if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}
     else if(fp){const ey=me.y+2.2*s,cp=Math.cos(me.pitch);camera.position.set(me.x,ey,me.z);
