@@ -16,7 +16,7 @@ const players = {};
 let phase = 'lobby', left = 0, seekerId = null;
 
 const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found, ready: !!p.ready });
-const full = p => ({ ...pub(p), x: p.x, z: p.z, y: p.y, run: p.run, ry: p.ry, pose: p.pose, tex: p.tex });
+const full = p => ({ ...pub(p), x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose, tex: p.tex });
 const roster = () => io.emit('roster', Object.values(players).map(pub));
 function setPhase(ph, sec, msg) {
   phase = ph; left = sec;
@@ -44,7 +44,7 @@ io.on('connection', socket => {
   socket.on('join', nick => {
     nick = String(nick || '').trim().slice(0, 12) || '익명';
     const p = {
-      id: socket.id, nick, found: false, ready: false, x: 0, z: 0, y: 0, run: false, ry: 0, pose: 'stand', tex: {},
+      id: socket.id, nick, found: false, ready: false, x: 0, z: 0, y: 0, pit: 0, run: false, ry: 0, pose: 'stand', tex: {},
       role: (phase === 'seeking' || phase === 'ended') ? 'spectator' : 'hider',
     };
     players[socket.id] = p;
@@ -80,11 +80,24 @@ io.on('connection', socket => {
     io.emit('cfg', { hide: hideSec, seek: seekSec });
   });
 
+  // 술래 페인트 총: 발사 이펙트를 다른 사람에게도 전달 (잡기 판정은 'tag')
+  socket.on('shot', d => {
+    const p = players[socket.id];
+    if (!p || p.role !== 'seeker' || (phase !== 'seeking' && phase !== 'hiding') || !d) return;
+    const now = Date.now();
+    if (now - (p.lastShot || 0) < 150) return;
+    p.lastShot = now;
+    const v3 = a => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? a.map(x => clamp(x, -1000, 1000)) : null;
+    const o = v3(d.o), pt = v3(d.p), n = v3(d.n);
+    if (!o || !pt) return;
+    socket.broadcast.emit('shot', { id: p.id, o, p: pt, n, c: (d.c | 0) & 0xffffff });
+  });
+
   socket.on('state', s => {
     const p = players[socket.id];
     if (!p || !s) return;
     p.x = +s.x || 0; p.z = +s.z || 0; p.ry = +s.ry || 0;
-    p.y = clamp(+s.y || 0, 0, 6); p.run = !!s.run;
+    p.y = clamp(+s.y || 0, 0, 6); p.run = !!s.run; p.pit = clamp(+s.pit || 0, -1.5, 1.5);
     p.pose = String(s.pose || 'stand').slice(0, 10);
   });
 
@@ -100,7 +113,7 @@ io.on('connection', socket => {
   socket.on('tag', id => {
     const s = players[socket.id], t = players[id];
     if (phase !== 'seeking' || !s || !t || s.role !== 'seeker' || t.role !== 'hider' || t.found) return;
-    if (Math.hypot(s.x - t.x, s.z - t.z) > 8) return;
+    if (Math.hypot(s.x - t.x, s.z - t.z) > 24) return;
     t.found = true;
     io.emit('found', { id, nick: t.nick });
     roster();
@@ -139,7 +152,7 @@ setInterval(() => {
 
 setInterval(() => {
   const list = Object.values(players);
-  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, y: p.y, run: p.run, ry: p.ry, pose: p.pose })));
+  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose })));
 }, 70);
 
 const PORT = process.env.PORT || 3000;
