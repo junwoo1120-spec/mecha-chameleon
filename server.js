@@ -98,7 +98,11 @@ io.on('connection', socket => {
     if (!p || !s) return;
     p.x = +s.x || 0; p.z = +s.z || 0; p.ry = +s.ry || 0;
     p.y = clamp(+s.y || 0, 0, 6); p.run = !!s.run; p.pit = clamp(+s.pit || 0, -1.5, 1.5);
-    p.pose = String(s.pose || 'stand').slice(0, 10);
+    let pose = String(s.pose || 'stand').slice(0, 10);
+    // 술래는 포즈 변경 불가(서 있기/엎드리기만), 도망자는 엎드리기 불가
+    if (p.role === 'seeker' && phase !== 'lobby') pose = pose === 'prone' ? 'prone' : 'stand';
+    else if (pose === 'prone') pose = 'stand';
+    p.pose = pose;
   });
 
   socket.on('tex', d => {
