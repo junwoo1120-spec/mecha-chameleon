@@ -25,8 +25,14 @@ function clearExtras() {
   });
   io.emit('clones-clear');
 }
+const WHISTLE_SEC = 45, WHISTLE_CD = 3;   // 자동 휘파람 주기 / 수동 휘파람 최소 간격(초)
+function doWhistle(p, auto) {
+  p.lastWhistle = Date.now();
+  io.emit('whistle', { id: p.id, x: p.x, y: p.y, z: p.z, auto: !!auto });
+}
 function setPhase(ph, sec, msg) {
   phase = ph; left = sec;
+  if (ph === 'seeking') Object.values(players).forEach(q => { q.lastWhistle = Date.now(); });
   if (ph === 'lobby' || ph === 'loading' || ph === 'ended') clearExtras();
   io.emit('phase', { phase, left, seekerId, msg });
   roster();
@@ -141,6 +147,14 @@ io.on('connection', socket => {
     }
   });
 
+  // 수동 휘파람 (도망자, 찾는 중에만)
+  socket.on('whistle', () => {
+    const p = players[socket.id];
+    if (!p || p.role !== 'hider' || p.found || phase !== 'seeking') return;
+    if (Date.now() - (p.lastWhistle || 0) < WHISTLE_CD * 1000) return;
+    doWhistle(p, false);
+  });
+
   socket.on('state', s => {
     const p = players[socket.id];
     if (!p || !s) return;
@@ -218,6 +232,10 @@ setInterval(() => {
   const now = Date.now();
   for (const p of Object.values(players))
     if (p.burySince && !p.exposed && now - p.burySince >= BURY_SEC * 1000) { p.exposed = true; io.emit('expose', { id: p.id, on: true }); }
+  // 아무것도 안 하는 도망자 대비: WHISTLE_SEC초마다 자동 휘파람
+  if (phase === 'seeking')
+    for (const p of Object.values(players))
+      if (p.role === 'hider' && !p.found && now - (p.lastWhistle || now) >= WHISTLE_SEC * 1000) doWhistle(p, true);
 }, 250);
 
 const PORT = process.env.PORT || 3000;
