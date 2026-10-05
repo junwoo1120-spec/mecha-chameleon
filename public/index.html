@@ -508,6 +508,7 @@ const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
 const lobbyUI=()=>joined&&phase==='lobby'&&!paintMode;
 const canPaint=()=>phase==='lobby'||phase==='ended'||phase==='hiding';
 const blind=()=>false;
+const frozen=()=>phase==='reveal'&&me.role==='hider';   // 공개 타임: 도망자는 이동·점프·벽타기·포즈 변경 불가
 const fpv=()=>me.role==='seeker'&&(phase==='hiding'||phase==='seeking'||phase==='reveal')&&!paintMode;
 const pitchRange=()=>fpv()?[-1.2,1.2]:[-.15,1];
 
@@ -537,7 +538,7 @@ function renderHud(){
   if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
   else if(phase==='hiding')t=me.role==='seeker'?'술래 대기실: 숨는 시간이 끝나면 시작해요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
   else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
-  else if(phase==='reveal')t=me.role==='seeker'?`공개 타임! 남은 카멜레온 ${hiders}마리`:me.found?'공개 타임 (관전)':'공개 타임! 위치가 드러났어요';
+  else if(phase==='reveal')t=me.role==='seeker'?`공개 타임! 도망자들이 얼마나 잘 숨었는지 보세요 (${hiders}마리)`:me.found?'공개 타임 (관전)':'공개 타임! 움직이지 마세요';
   else if(phase==='loading')t='Loading...';
   else t='게임 종료';
   $('phase').textContent=t;
@@ -561,7 +562,7 @@ function setPaint(on){
   renderHud();
 }
 const seekLock=()=>me.role==='seeker'&&phase!=='lobby';
-function setPose(n){if(seekLock())return;if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poseBar').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
+function setPose(n){if(seekLock()||frozen())return;if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poseBar').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
 
 /* ---------- 소켓 ---------- */
 socket.on('welcome',d=>{
@@ -845,8 +846,8 @@ function fire(now){
   else end=ray.ray.at(40,new THREE.Vector3());
   spawnTracer(mz.toArray(),end.toArray(),col);if(nrm)addDecal(end.toArray(),nrm.toArray(),col);
   socket.emit('shot',{o:mz.toArray(),p:end.toArray(),n:nrm?nrm.toArray():null,c:col});
-  if(best&&Math.hypot(best.x-me.x,best.z-me.z)<=24)socket.emit('tag',best.id);
-  if(hitClone)socket.emit('tag-clone',hitClone.id);
+  if(phase==='seeking'&&best&&Math.hypot(best.x-me.x,best.z-me.z)<=24)socket.emit('tag',best.id);   // 공개 타임엔 맞혀도 아웃 X
+  if(phase==='seeking'&&hitClone)socket.emit('tag-clone',hitClone.id);
 }
 function tryTag(){fire(performance.now());}
 
@@ -935,11 +936,11 @@ function loop(now){
     const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
     me.climbCd=Math.max(0,(me.climbCd||0)-dt);
     const alive=me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'||phase==='reveal');
-    if(!me.climb&&alive&&!lobbyWorld()&&keys.Space&&!paintMode&&me.climbCd<=0)tryGrab(rad);
+    if(!me.climb&&alive&&!lobbyWorld()&&keys.Space&&!paintMode&&!frozen()&&me.climbCd<=0)tryGrab(rad);
     if(me.climb&&(!alive||lobbyWorld()))releaseWall(0);
     const g0=supportH(me.x,me.z,rS,me.y,.06),air=!me.climb&&(me.vy!==0||me.y>g0+.02),tol=air?LEDGE(s):.06;
-    if(me.climb&&!paintMode&&!blind()&&phase!=='loading')climbStep(dt,s,rad,rS,ix0,sy,cy,ctrl);
-    else if(!me.climb&&!paintMode&&!blind()&&phase!=='loading'&&(ix||iz)){
+    if(me.climb&&!paintMode&&!blind()&&!frozen()&&phase!=='loading')climbStep(dt,s,rad,rS,ix0,sy,cy,ctrl);
+    else if(!me.climb&&!paintMode&&!blind()&&!frozen()&&phase!=='loading'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const SPD=SPEED*(lobbyWorld()?1:.65)*(run?1.4:1)*(prone?.35:1),dx=(-sy*iz+cy*ix)*SPD*dt,dz=(-cy*iz-sy*ix)*SPD*dt;moving=true;
       if(!hitWall(me.x+dx,me.z,rad,me.y,tol))me.x+=dx;
@@ -951,7 +952,7 @@ function loop(now){
       if(keys.ArrowUp)me.pitch=Math.max(pitchRange()[0],me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(pitchRange()[1],me.pitch+1.6*dt);}
     if(!me.climb){
       const g=supportH(me.x,me.z,rS,me.y,tol);
-      if((fpv()?keys.KeyV:keys.Space)&&!paintMode&&!blind()&&phase!=='loading'&&!prone&&me.vy===0&&me.y<=g+.001)me.vy=7.5*(.5+.5*s/.72);
+      if((fpv()?keys.KeyV:keys.Space)&&!paintMode&&!blind()&&!frozen()&&phase!=='loading'&&!prone&&me.vy===0&&me.y<=g+.001)me.vy=7.5*(.5+.5*s/.72);
       if(me.vy<=0&&g>me.y+.0001){me.y=Math.min(g,me.y+Math.max(4,(g-me.y)*14)*dt);me.vy=0;}   // 비슷한 높이면 올라타기
       else if(me.vy!==0||me.y>g+.0001){me.vy-=24*dt;me.y+=me.vy*dt;if(me.y<=g){me.y=g;me.vy=0;}}
       if(!lobbyWorld()){const top=H-2.55*s;if(me.y>top){me.y=top;if(me.vy>0)me.vy=0;}}
