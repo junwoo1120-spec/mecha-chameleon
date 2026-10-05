@@ -705,6 +705,7 @@ function updListener(){
 }
 function playWhistle(x,y,z){
   const a=ensureAudio();if(!a)return;updListener();
+  if(a.state!=='running')a.resume().then(()=>{if(a.state!=='running')toast('🔇 소리를 켜려면 화면을 한 번 클릭하세요',3000);}).catch(()=>{});
   const t=a.currentTime+.03,dur=1.3;
   const pan=a.createPanner();pan.panningModel='HRTF';pan.distanceModel='linear';
   pan.refDistance=3;pan.maxDistance=160;pan.rolloffFactor=.85;      // 맵 끝(약 76)에서도 약 60% 크기로 들림
@@ -724,7 +725,11 @@ function playWhistle(x,y,z){
   [o,o2,lfo,ns].forEach(n=>{n.start(t);n.stop(t+dur+.05);});
 }
 const canWhistle=()=>joined&&me.role==='hider'&&!me.found&&phase==='seeking';
-function whistleNow(){if(canWhistle())socket.emit('whistle');}
+function whistleNow(){
+  if(canWhistle()){ensureAudio();socket.emit('whistle');return;}
+  if(!joined)return;
+  toast(me.role!=='hider'?'휘파람은 도망자만 쓸 수 있어요':phase!=='seeking'?'휘파람은 술래가 찾기 시작한 뒤에 쓸 수 있어요':'잡힌 뒤에는 휘파람을 못 써요',2000);
+}
 $('whBtn').onmousedown=e=>e.preventDefault();
 $('whBtn').onclick=e=>{whistleNow();e.currentTarget.blur();};
 
