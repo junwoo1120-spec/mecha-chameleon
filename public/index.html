@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>메챠 카멜레온 · 백룸</title>
 <style>
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:#1a1608;color:#f4efc8;font-family:'Noto Sans KR',system-ui,sans-serif}
-canvas{display:block;width:100%;height:100%}
+canvas{display:block;width:100%;height:100%;touch-action:none}
 .ui{position:fixed;pointer-events:none;z-index:6}
 #hud{top:10px;left:50%;transform:translateX(-50%);text-align:center;text-shadow:0 1px 4px #000}
 #phase{font-size:16px}#timer{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -679,7 +679,23 @@ document.addEventListener('mousemove',e=>{
   me.yaw-=e.movementX*.0025;{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch+e.movementY*.0025));}
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('wheel',e=>{if(paintMode)pDist=Math.max(2.5,Math.min(9,pDist+e.deltaY*.005));});
+/* ---------- 시야 줌: 마우스 휠 / 모바일 두 손가락 핀치 (꾸미기 중·평소 모두) ---------- */
+let camZoom=1;
+function zoomCam(f){
+  if(paintMode)pDist=Math.max(2.5,Math.min(9,pDist*f));
+  else if(!fpv())camZoom=Math.max(.3,Math.min(2.5,camZoom*f));   // 술래 1인칭 제외
+}
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoomCam(Math.exp(e.deltaY*.0012));},{passive:false});
+const tps=new Map();let pinchD=0,pinched=false;
+const tpDist=()=>{const a=[...tps.values()];return Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])||1;};
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;
+  tps.set(e.pointerId,[e.clientX,e.clientY]);
+  if(tps.size===2){pinched=true;pinchD=tpDist();if(paintMode)flush();}},true);
+canvas.addEventListener('pointermove',e=>{if(e.pointerType!=='touch'||!tps.has(e.pointerId))return;
+  tps.set(e.pointerId,[e.clientX,e.clientY]);
+  if(tps.size===2){const d=tpDist();zoomCam(pinchD/d);pinchD=d;}},true);
+const tpEnd=e=>{if(e.pointerType!=='touch')return;tps.delete(e.pointerId);if(!tps.size)pinched=false;};
+canvas.addEventListener('pointerup',tpEnd,true);canvas.addEventListener('pointercancel',tpEnd,true);
 canvas.addEventListener('mousedown',e=>{
   if(!joined||paintMode)return;
   if(document.pointerLockElement!==canvas){canvas.requestPointerLock();return;}
@@ -742,12 +758,12 @@ function paintAt(e,start){
 }
 function flush(){dirty.forEach(p=>socket.emit('tex',{part:p,faces:serialize(avMe,p)}));dirty.clear();stroke=null;}
 canvas.addEventListener('pointerdown',e=>{
-  if(!paintMode||e.button!==0||e.shiftKey)return;
+  if(!paintMode||pinched||e.button!==0||e.shiftKey)return;
   if(mode==='pick'){pickColor(e);return;}
   canvas.setPointerCapture(e.pointerId);paintAt(e,true);
 });
 canvas.addEventListener('pointermove',e=>{
-  if(!paintMode)return;
+  if(!paintMode||pinched)return;
   if((e.buttons&2)||((e.buttons&1)&&e.shiftKey)){pYaw-=e.movementX*.01;return;}
   if((e.buttons&1)&&mode!=='pick')paintAt(e,false);
 });
@@ -973,7 +989,7 @@ function loop(now){
     if(paintMode){const cs=s/.72;camAt(1*cs,pYaw,.15,pDist*cs);}
     else if(fp){me.eyeH=(me.eyeH==null?2.2:me.eyeH)+((prone?.75:2.2)-(me.eyeH==null?2.2:me.eyeH))*(1-Math.exp(-12*dt));const ey=me.y+me.eyeH*s,cp=Math.cos(me.pitch);camera.position.set(me.x,ey,me.z);
       camera.lookAt(me.x-Math.sin(me.yaw)*cp,ey-Math.sin(me.pitch),me.z-Math.cos(me.yaw)*cp);}
-    else{const cs=Math.max(.5,s/.72);camAt(1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs);}
+    else{const cs=Math.max(.5,s/.72);camAt(1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs*camZoom);}
     plight.position.set(me.x,2.6,me.z);
     const k=1-Math.exp(-12*dt);
     clones.forEach(c=>stepPose(c.av,dt));
