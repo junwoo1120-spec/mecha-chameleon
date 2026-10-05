@@ -183,6 +183,7 @@ io.on('connection', socket => {
     io.emit('clone-del', socket.id);
     if (phase === 'loading' || phase === 'hiding' || phase === 'seeking' || phase === 'reveal') {
       if (p.role === 'seeker') endGame('술래가 나갔어요. 숨는 팀 승리!');
+      else if (phase === 'reveal' && p.role === 'hider' && !p.found) endGame('도망자가 나갔어요. 숨는 팀 승리!');
       else if (Object.keys(players).length < 2) endGame('인원이 부족해 게임이 끝났어요');
       else checkEnd();
     }
