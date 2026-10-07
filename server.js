@@ -16,7 +16,7 @@ const players = {};
 let phase = 'lobby', left = 0, seekerId = null;
 
 const pub = p => ({ id: p.id, nick: p.nick, role: p.role, found: p.found, ready: !!p.ready });
-const full = p => ({ ...pub(p), x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose, air: !!p.air, exposed: !!p.exposed, tex: p.tex });
+const full = p => ({ ...pub(p), x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose, air: !!p.air, fl: !!p.fl, exposed: !!p.exposed, tex: p.tex });
 const roster = () => io.emit('roster', Object.values(players).map(pub));
 function clearExtras() {
   Object.values(players).forEach(p => {
@@ -43,11 +43,12 @@ function checkEnd() {
   if (!Object.values(players).some(p => p.role === 'hider' && !p.found)) endGame('술래 승리! 모두 찾았어요');
 }
 
-function startGame() {
+function startGame(fast) {
   const ids = Object.keys(players);
-  seekerId = ids[Math.floor(Math.random() * ids.length)];
+  // 혼자 테스트(개발자 바로 시작)일 땐 술래 없이 도망자로 시작
+  seekerId = ids.length < 2 ? null : ids[Math.floor(Math.random() * ids.length)];
   ids.forEach(id => { const p = players[id]; p.role = id === seekerId ? 'seeker' : 'hider'; p.found = false; p.ready = false; });
-  setPhase('loading', LOAD_SEC, '');
+  setPhase('loading', fast ? 2 : LOAD_SEC, '');
 }
 function checkStart() {
   const ids = Object.keys(players);
@@ -77,6 +78,13 @@ io.on('connection', socket => {
     p.ready = !p.ready;
     roster();
     checkStart();
+  });
+
+  // 개발자(박준우) 바로 시작: 대기실에서 모두의 준비 없이 즉시 시작 (1명이면 술래 없는 솔로 테스트)
+  socket.on('dev-start', () => {
+    const p = players[socket.id];
+    if (!p || p.nick !== DEV_NICK || phase !== 'lobby') return;
+    startGame(true);
   });
 
   socket.on('dev', d => {
@@ -117,7 +125,7 @@ io.on('connection', socket => {
       const f = d.tex[part];
       if (Array.isArray(f) && f.length >= 1 && f.length <= 2 && f.every(u => typeof u === 'string' && u.length < 250000 && u.startsWith('data:image/png;base64,'))) tex[part] = f;
     }
-    p.clone = { id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, pose: String(d.pose || 'stand').slice(0, 10), tex };
+    p.clone = { id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, fl: !!p.fl, pose: String(d.pose || 'stand').slice(0, 10), tex };
     io.emit('clone', p.clone);
   });
   socket.on('clone-del', () => {
@@ -165,14 +173,14 @@ io.on('connection', socket => {
     // 술래는 포즈 변경 불가(서 있기/엎드리기만), 도망자는 엎드리기 불가
     if (p.role === 'seeker' && phase !== 'lobby') pose = pose === 'prone' ? 'prone' : 'stand';
     else if (pose === 'prone') pose = 'stand';
-    p.pose = pose; p.air = !!s.air;
+    p.pose = pose; p.air = !!s.air; p.fl = !!s.fl;
   });
 
   socket.on('tex', d => {
     const p = players[socket.id];
     if (!p || !d || !PARTS.includes(d.part) || !Array.isArray(d.faces) || d.faces.length < 1 || d.faces.length > 2) return;
     if (!d.faces.every(f => typeof f === 'string' && f.length < 250000 && f.startsWith('data:image/png;base64,'))) return;
-    if (phase === 'seeking' || phase === 'reveal' || phase === 'loading') return;
+    if (phase === 'reveal' || phase === 'loading') return;   // 게임 중(숨기·찾기)에도 꾸미기 가능
     p.tex[d.part] = d.faces;
     socket.broadcast.emit('tex', { id: p.id, part: d.part, faces: d.faces });
   });
@@ -211,7 +219,7 @@ setInterval(() => {
   left--;
   io.emit('tick', { left });
   if (left > 0) return;
-  if (phase === 'loading') setPhase('hiding', hideSec, `${players[seekerId] ? players[seekerId].nick : '누군가'}님이 술래! ${kor(hideSec)} 안에 숨으세요`);
+  if (phase === 'loading') setPhase('hiding', hideSec, players[seekerId] ? `${players[seekerId].nick}님이 술래! ${kor(hideSec)} 안에 숨으세요` : `솔로 테스트 (술래 없음)! ${kor(hideSec)} 안에 숨으세요`);
   else if (phase === 'hiding') setPhase('seeking', seekSec, `술래가 움직입니다! ${kor(seekSec)} 안에 찾아요`);
   else if (phase === 'seeking') setPhase('reveal', REVEAL_SEC, `공개 타임! ${REVEAL_SEC}초 동안 도망자는 움직일 수 없어요. 술래는 얼마나 잘 숨었는지 구경하세요`);
   else if (phase === 'reveal') endGame('시간 종료! 숨는 팀 승리');
@@ -224,7 +232,7 @@ setInterval(() => {
 
 setInterval(() => {
   const list = Object.values(players);
-  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose, air: !!p.air })));
+  if (list.length) io.volatile.emit('states', list.map(p => ({ id: p.id, x: p.x, z: p.z, y: p.y, pit: p.pit, run: p.run, ry: p.ry, pose: p.pose, air: !!p.air, fl: p.fl ? 1 : 0 })));
 }, 70);
 
 // 파묻힘 공개 판정
