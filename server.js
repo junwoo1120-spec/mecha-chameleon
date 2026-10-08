@@ -37,6 +37,7 @@ function setPhase(ph, sec, msg) {
   io.emit('phase', { phase, left, seekerId, msg });
   roster();
 }
+const seekerNames = () => Object.values(players).filter(p => p.role === 'seeker').map(p => p.nick).join(', ');
 function endGame(msg) { setPhase('ended', END_SEC, msg); }
 function checkEnd() {
   if (phase !== 'seeking' && phase !== 'reveal') return;
@@ -46,8 +47,13 @@ function checkEnd() {
 function startGame(fast) {
   const ids = Object.keys(players);
   // 혼자 테스트(개발자 바로 시작)일 땐 술래 없이 도망자로 시작
-  seekerId = ids.length < 2 ? null : ids[Math.floor(Math.random() * ids.length)];
-  ids.forEach(id => { const p = players[id]; p.role = id === seekerId ? 'seeker' : 'hider'; p.found = false; p.ready = false; });
+  // 술래 수 = 전체 인원의 1/3 (반올림, 최소 1명). 1명뿐이면 술래 없이 솔로 테스트
+  const k = ids.length < 2 ? 0 : Math.max(1, Math.round(ids.length / 3));
+  const pool = ids.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const seekers = new Set(pool.slice(0, k));
+  seekerId = k ? pool[0] : null;
+  ids.forEach(id => { const p = players[id]; p.role = seekers.has(id) ? 'seeker' : 'hider'; p.found = false; p.ready = false; });
   setPhase('loading', fast ? 2 : LOAD_SEC, '');
 }
 function checkStart() {
@@ -204,7 +210,7 @@ io.on('connection', socket => {
     io.emit('player-remove', socket.id);
     io.emit('clone-del', socket.id);
     if (phase === 'loading' || phase === 'hiding' || phase === 'seeking' || phase === 'reveal') {
-      if (p.role === 'seeker') endGame('술래가 나갔어요. 숨는 팀 승리!');
+      if (p.role === 'seeker' && !Object.values(players).some(q => q.role === 'seeker')) endGame('술래가 나갔어요. 숨는 팀 승리!');
       else if (phase === 'reveal' && p.role === 'hider' && !p.found) endGame('도망자가 나갔어요. 숨는 팀 승리!');
       else if (Object.keys(players).length < 2) endGame('인원이 부족해 게임이 끝났어요');
       else checkEnd();
@@ -219,7 +225,7 @@ setInterval(() => {
   left--;
   io.emit('tick', { left });
   if (left > 0) return;
-  if (phase === 'loading') setPhase('hiding', hideSec, players[seekerId] ? `${players[seekerId].nick}님이 술래! ${kor(hideSec)} 안에 숨으세요` : `솔로 테스트 (술래 없음)! ${kor(hideSec)} 안에 숨으세요`);
+  if (phase === 'loading') setPhase('hiding', hideSec, seekerNames() ? `${seekerNames()}님이 술래! ${kor(hideSec)} 안에 숨으세요` : `솔로 테스트 (술래 없음)! ${kor(hideSec)} 안에 숨으세요`);
   else if (phase === 'hiding') setPhase('seeking', seekSec, `술래가 움직입니다! ${kor(seekSec)} 안에 찾아요`);
   else if (phase === 'seeking') setPhase('reveal', REVEAL_SEC, `공개 타임! ${REVEAL_SEC}초 동안 도망자는 움직일 수 없어요. 술래는 얼마나 잘 숨었는지 구경하세요`);
   else if (phase === 'reveal') endGame('시간 종료! 숨는 팀 승리');
