@@ -560,10 +560,10 @@ function spawn(){
 
 function renderHud(){
   const hiders=rosterList.filter(p=>p.role==='hider'&&!p.found).length;
-  const sk=rosterList.find(p=>p.id===seekerId);
+  const sks=rosterList.filter(p=>p.role==='seeker').map(p=>p.nick).join(', ');
   let t='';
   if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
-  else if(phase==='hiding')t=me.role==='seeker'?'술래 대기실: 숨는 시간이 끝나면 시작해요':`숨으세요! 술래: ${sk?sk.nick:'?'}`;
+  else if(phase==='hiding')t=me.role==='seeker'?'술래 대기실: 숨는 시간이 끝나면 시작해요':`숨으세요! 술래: ${sks||'?'}`;
   else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
   else if(phase==='reveal')t=me.role==='seeker'?`공개 타임! 도망자들이 얼마나 잘 숨었는지 보세요 (${hiders}마리)`:me.found?'공개 타임 (관전)':'공개 타임! 움직이지 마세요';
   else if(phase==='loading')t='Loading...';
