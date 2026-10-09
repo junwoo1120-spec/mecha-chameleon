@@ -72,7 +72,8 @@ body.touch #help{display:none}
 #joy{position:fixed;z-index:9;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;background:rgba(244,239,200,.12);border:2px solid rgba(244,239,200,.35)}
 #joyKnob{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(244,239,200,.5);border:2px solid rgba(244,239,200,.8);pointer-events:none}
 #mAct{position:fixed;z-index:9;right:10px;bottom:110px;grid-template-columns:repeat(2,64px);gap:6px}
-#mAct button{height:46px;padding:0;font-size:13px;opacity:.92;touch-action:none}
+#mAct button{height:46px;padding:0;font-size:13px;line-height:1.15;white-space:pre-line;opacity:.92;touch-action:none}
+body.touch #poseBar{z-index:10;left:12px;right:150px;transform:none;max-width:none;bottom:176px;justify-content:flex-start}
 #ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
 <canvas id="c"></canvas>
@@ -96,12 +97,18 @@ body.touch #help{display:none}
 <button id="paintBtn">🎨 꾸미기 (F)</button>
 <div id="joy"><div id="joyKnob"></div></div>
 <div id="mAct">
-  <button id="mFire" hidden>🔫 발사</button>
-  <button id="mJump">⬆ 점프</button>
-  <button id="mDown">⬇ 내려가기</button>
-  <button id="mRun">🏃 달리기</button>
-  <button id="mPose">🧍 포즈</button>
-  <button id="mClone" hidden>👥 분신</button>
+  <button id="mFire" hidden>🔫
+발사</button>
+  <button id="mJump">⬆
+점프</button>
+  <button id="mDown">⬇
+내려가기</button>
+  <button id="mRun">🏃
+달리기</button>
+  <button id="mPose">🧍
+포즈</button>
+  <button id="mClone" hidden>👥
+분신 소환</button>
 </div>
 <div id="panel" hidden>
   <h3>꾸미기</h3>
@@ -860,15 +867,25 @@ if(IS_TOUCH)document.body.classList.add('touch');
     b.addEventListener('pointerdown',e=>{e.preventDefault();code=codeFn();keys[code]=true;b.classList.add('on');});
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(code){keys[code]=false;code=null;}b.classList.remove('on');}));};
   hold('mJump',()=>fpv()?'KeyV':'Space');   // 도망자: Space(점프/벽타기/올라가기), 술래: V
-  hold('mDown',()=>'ControlLeft');          // 벽 내려가기 / 술래 엎드리기 / 천장 달리기
+  (function(){const b=$('mDown');let held=false;
+    b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('on');
+      if(me.climb){releaseWall(.5);return;}          // 벽·천장에서 바로 떨어지기
+      keys.ControlLeft=true;held=true;});            // 땅에서는 Ctrl (술래 엎드리기)
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(held){keys.ControlLeft=false;held=false;}b.classList.remove('on');}));})();
   hold('mFire',()=>'Space');                // 술래 페인트 총
   $('mRun').onclick=()=>{joy.run=!joy.run;$('mRun').classList.toggle('on',joy.run);};
-  $('mPose').onclick=()=>{if(!seekLock())$('poseBar').hidden=!$('poseBar').hidden;};
-  $('mClone').onclick=()=>{if(clones.has(me.id))socket.emit('clone-del');else summonClone();};
+  $('mPose').onclick=()=>{if(seekLock())return;const pb=$('poseBar');pb.hidden=!pb.hidden;$('mPose').classList.toggle('on',!pb.hidden);};
+  $('mClone').onclick=()=>{
+    if(clones.has(me.id)){socket.emit('clone-del');return;}
+    if(!(me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'))||lobbyWorld()){toast('분신은 숨는 시간·찾는 시간에만 쓸 수 있어요',1800);return;}
+    if(paintMode){toast('꾸미기를 닫고 소환하세요',1500);return;}
+    summonClone();};
 })();
 function mobVis(){
   const sh=(id,v)=>{const el=$(id);if(el.hidden===v)el.hidden=!v;};
   sh('mFire',fpv());sh('mClone',me.role==='hider'&&!me.found);sh('mPose',!seekLock());
+  const cl=$('mClone'),want=clones.has(me.id)?'🗑\n분신 삭제':'👥\n분신 소환';if(cl.textContent!==want)cl.textContent=want;
+  $('mPose').classList.toggle('on',!$('poseBar').hidden);
 }
 
 const SK={av:null,key:'',pos:null};
@@ -1102,7 +1119,7 @@ function climbStep(dt,s,rad,rS,ix,sy,cy,ctrl){
   if(c.ceil){                                   // 천장: WASD 이동, 떨어지기는 Shift만
     const iz=((keys.KeyW||joy.y>.5)?1:0)-((keys.KeyS||joy.y<-.5)?1:0),ixx=ix;me.y=H-.02;me.vy=0;
     if(!ixx&&!iz)return false;
-    const l=Math.hypot(ixx,iz),a=ixx/l,b=iz/l,SPD=SPEED*.65*.55*(ctrl?1.4:1);   // 천장: Ctrl 누르면 달리기
+    const l=Math.hypot(ixx,iz),a=ixx/l,b=iz/l,SPD=SPEED*.65*.55*((ctrl||joy.run)?1.4:1);   // 천장: Ctrl 누르면 달리기
     const dx=(-sy*b+cy*a)*SPD*dt,dz=(-cy*b-sy*a)*SPD*dt;
     if(!hitWall(me.x+dx,me.z,rad,me.y,.05))me.x+=dx;
     if(!hitWall(me.x,me.z+dz,rad,me.y,.05))me.z+=dz;
@@ -1191,7 +1208,7 @@ function loop(now){
   if(joined){
     const s=scaleOf(me.role),rad=.45*s/.72,rS=rad*.6;
     const ctrl=!!(keys.ControlLeft||keys.ControlRight),shift=!!(keys.ShiftLeft||keys.ShiftRight)||joy.run,lockS=seekLock(),prone=lockS&&ctrl;
-    let moving=false;const run=(shift&&!prone&&!me.climb)||!!(me.climb&&me.climb.ceil&&ctrl&&!lockS);
+    let moving=false;const run=(shift&&!prone&&!me.climb)||!!(me.climb&&me.climb.ceil&&(ctrl||joy.run)&&!lockS);
     if(lockS){me.pose=prone?'prone':'stand';if(!$('poseBar').hidden)$('poseBar').hidden=true;}else if(me.pose==='prone')me.pose='stand';
     const ix0=Math.max(-1,Math.min(1,(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x));let ix=ix0,iz=Math.max(-1,Math.min(1,(keys.KeyW?1:0)-(keys.KeyS?1:0)+joy.y));
     const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
