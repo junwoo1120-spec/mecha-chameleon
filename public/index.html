@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>메챠 카멜레온 · 백룸</title>
 <style>
 *{box-sizing:border-box}
@@ -64,6 +64,15 @@ button:disabled{opacity:.4;cursor:default}
 #loginHint{font-size:13px;color:#f4efc8;opacity:.8;text-shadow:0 1px 4px #000}
 #titleFig{width:min(30vw,340px);height:auto;flex:none}
 @media (max-width:800px){#titleFig{display:none}}
+/* ---- 모바일 조작 ---- */
+#joy,#mAct{display:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+body.touch #joy{display:block}
+body.touch #mAct{display:grid}
+body.touch #help{display:none}
+#joy{position:fixed;z-index:9;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;background:rgba(244,239,200,.12);border:2px solid rgba(244,239,200,.35)}
+#joyKnob{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(244,239,200,.5);border:2px solid rgba(244,239,200,.8);pointer-events:none}
+#mAct{position:fixed;z-index:9;right:10px;bottom:110px;grid-template-columns:repeat(2,64px);gap:6px}
+#mAct button{height:46px;padding:0;font-size:13px;opacity:.92;touch-action:none}
 #ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
 <canvas id="c"></canvas>
@@ -85,6 +94,15 @@ button:disabled{opacity:.4;cursor:default}
 <svg id="whGauge" class="ui" viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"/><circle id="whArc" cx="30" cy="30" r="24" fill="none" stroke="#3ddc4a" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 30 30)"/></svg>
 <button id="whBtn" hidden>🎵 휘파람 (H)</button>
 <button id="paintBtn">🎨 꾸미기 (F)</button>
+<div id="joy"><div id="joyKnob"></div></div>
+<div id="mAct">
+  <button id="mFire" hidden>🔫 발사</button>
+  <button id="mJump">⬆ 점프</button>
+  <button id="mDown">⬇ 내려가기</button>
+  <button id="mRun">🏃 달리기</button>
+  <button id="mPose">🧍 포즈</button>
+  <button id="mClone" hidden>👥 분신</button>
+</div>
 <div id="panel" hidden>
   <h3>꾸미기</h3>
   <div id="msgLock">지금은 색을 칠할 수 없어요 (포즈는 가능)</div>
@@ -525,7 +543,7 @@ const kor=s=>s<60?`${s}초`:s%60?`${Math.floor(s/60)}분 ${s%60}초`:`${s/60}분
 const others=new Map();
 const P_MAX=1.55;   // 정수리가 보이는 각도
 let paintMode=false,pYaw=.6,pPitch=.15,pDist=5,color='#d9c86a',size=12,mode='brush',stroke=null,pickReq=null,lastMode='brush',snapT=0;
-const dirty=new Set(),keys={};
+const dirty=new Set(),keys={},joy={x:0,y:0,run:false};
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
 
 const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
@@ -797,11 +815,61 @@ canvas.addEventListener('pointermove',e=>{if(e.pointerType!=='touch'||!tps.has(e
 const tpEnd=e=>{if(e.pointerType!=='touch')return;tps.delete(e.pointerId);if(!tps.size)pinched=false;};
 canvas.addEventListener('pointerup',tpEnd,true);canvas.addEventListener('pointercancel',tpEnd,true);
 canvas.addEventListener('mousedown',e=>{
-  if(!joined||paintMode)return;
+  if(!joined||paintMode||IS_TOUCH)return;
   if(document.pointerLockElement!==canvas){canvas.requestPointerLock();return;}
   if(e.button===0)tryTag();
 });
 document.addEventListener('pointerlockchange',()=>{$('cross').hidden=paintMode||document.pointerLockElement!==canvas;});
+
+/* ---------- 모바일 조작: 조이스틱 / 시점 드래그 / 버튼 ---------- */
+const IS_TOUCH=matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(IS_TOUCH)document.body.classList.add('touch');
+(function(){
+  const base=$('joy'),knob=$('joyKnob'),R=48,DZ=.18,SNAP=.25;let jid=null,cx=0,cy=0;
+  const snap=v=>Math.abs(v)<SNAP?0:v;
+  function upd(e){
+    let dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy);
+    if(d>R){dx*=R/d;dy*=R/d;}
+    knob.style.transform=`translate(${dx}px,${dy}px)`;
+    if(Math.hypot(dx,dy)/R<DZ){joy.x=0;joy.y=0;}else{joy.x=snap(dx/R);joy.y=snap(-dy/R);}   // 위쪽 = 앞으로
+  }
+  base.addEventListener('pointerdown',e=>{
+    if(jid!==null)return;jid=e.pointerId;base.setPointerCapture(e.pointerId);
+    const r=base.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;upd(e);e.preventDefault();});
+  base.addEventListener('pointermove',e=>{if(e.pointerId===jid)upd(e);});
+  const end=e=>{if(e.pointerId!==jid)return;jid=null;joy.x=0;joy.y=0;knob.style.transform='';};
+  base.addEventListener('pointerup',end);base.addEventListener('pointercancel',end);
+  addEventListener('blur',()=>{jid=null;joy.x=0;joy.y=0;knob.style.transform='';});
+})();
+// 화면 한 손가락 드래그 = 시점 회전 (두 손가락은 기존 핀치 확대)
+(function(){
+  const lk=new Map();
+  canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')lk.set(e.pointerId,[e.clientX,e.clientY]);});
+  canvas.addEventListener('pointermove',e=>{
+    const p=lk.get(e.pointerId);if(!p||e.pointerType!=='touch')return;
+    const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;
+    if(!joined||paintMode||tps.size>1)return;
+    me.yaw-=dx*.005;const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch+dy*.005));
+  });
+  const e2=e=>lk.delete(e.pointerId);
+  canvas.addEventListener('pointerup',e2);canvas.addEventListener('pointercancel',e2);
+})();
+// 누르고 있는 동안 가상 키가 눌린 것으로 처리
+(function(){
+  const hold=(id,codeFn)=>{const b=$(id);let code=null;
+    b.addEventListener('pointerdown',e=>{e.preventDefault();code=codeFn();keys[code]=true;b.classList.add('on');});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(code){keys[code]=false;code=null;}b.classList.remove('on');}));};
+  hold('mJump',()=>fpv()?'KeyV':'Space');   // 도망자: Space(점프/벽타기/올라가기), 술래: V
+  hold('mDown',()=>'ControlLeft');          // 벽 내려가기 / 술래 엎드리기 / 천장 달리기
+  hold('mFire',()=>'Space');                // 술래 페인트 총
+  $('mRun').onclick=()=>{joy.run=!joy.run;$('mRun').classList.toggle('on',joy.run);};
+  $('mPose').onclick=()=>{if(!seekLock())$('poseBar').hidden=!$('poseBar').hidden;};
+  $('mClone').onclick=()=>{if(clones.has(me.id))socket.emit('clone-del');else summonClone();};
+})();
+function mobVis(){
+  const sh=(id,v)=>{const el=$(id);if(el.hidden===v)el.hidden=!v;};
+  sh('mFire',fpv());sh('mClone',me.role==='hider'&&!me.found);sh('mPose',!seekLock());
+}
 
 const SK={av:null,key:'',pos:null};
 function skinnedPositions(av){
@@ -1032,7 +1100,7 @@ function cornerTurn(c,lx,lz,hd,hr,wallEnded,sgn,ixs){
 function climbStep(dt,s,rad,rS,ix,sy,cy,ctrl){
   const c=me.climb,sp=1.3*1.4,topY=H-2.55*s-.03,hd=.255*s+.012,hr=hd*.85;   // 벽 이동속도 1.4배
   if(c.ceil){                                   // 천장: WASD 이동, 떨어지기는 Shift만
-    const iz=(keys.KeyW?1:0)-(keys.KeyS?1:0),ixx=ix;me.y=H-.02;me.vy=0;
+    const iz=((keys.KeyW||joy.y>.5)?1:0)-((keys.KeyS||joy.y<-.5)?1:0),ixx=ix;me.y=H-.02;me.vy=0;
     if(!ixx&&!iz)return false;
     const l=Math.hypot(ixx,iz),a=ixx/l,b=iz/l,SPD=SPEED*.65*.55*(ctrl?1.4:1);   // 천장: Ctrl 누르면 달리기
     const dx=(-sy*b+cy*a)*SPD*dt,dz=(-cy*b-sy*a)*SPD*dt;
@@ -1044,9 +1112,9 @@ function climbStep(dt,s,rad,rS,ix,sy,cy,ctrl){
   if(!wallAt(me.x+c.dx*(hd+.06),me.z+c.dz*(hd+.06))){releaseWall();return false;}
   // 꼭대기에서 천장 쪽을 보고 W → 천장에 붙기
   if(me.y>=topY-.05&&!c.hint){c.hint=1;toast('천장을 올려다보고 W를 누르면 천장에 붙어요',2500);}
-  if(keys.KeyW&&me.y>=topY-.05&&me.pitch<-.2){me.climb={ceil:true,dx:0,dz:0};me.y=H-.02;me.vy=0;return false;}
+  if((keys.KeyW||joy.y>.5)&&me.y>=topY-.05&&me.pitch<-.2){me.climb={ceil:true,dx:0,dz:0};me.y=H-.02;me.vy=0;return false;}
   // 벽 반대 방향을 보고 W → 바로 떨어지기
-  if(keys.KeyW&&(-sy*c.dx-cy*c.dz)<-.5){releaseWall(.5);return false;}
+  if((keys.KeyW||joy.y>.5)&&(-sy*c.dx-cy*c.dz)<-.5){releaseWall(.5);return false;}
   const tx=-c.dz,tz=c.dx,sg=(cy*tx-sy*tz)>=0?1:-1;       // 화면 기준 오른쪽이 되는 벽면 방향
   c.turnT=Math.max(0,(c.turnT||0)-dt);
   let sgn=sg*Math.sign(ix);
@@ -1122,10 +1190,10 @@ function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(joined){
     const s=scaleOf(me.role),rad=.45*s/.72,rS=rad*.6;
-    const ctrl=!!(keys.ControlLeft||keys.ControlRight),shift=!!(keys.ShiftLeft||keys.ShiftRight),lockS=seekLock(),prone=lockS&&ctrl;
+    const ctrl=!!(keys.ControlLeft||keys.ControlRight),shift=!!(keys.ShiftLeft||keys.ShiftRight)||joy.run,lockS=seekLock(),prone=lockS&&ctrl;
     let moving=false;const run=(shift&&!prone&&!me.climb)||!!(me.climb&&me.climb.ceil&&ctrl&&!lockS);
     if(lockS){me.pose=prone?'prone':'stand';if(!$('poseBar').hidden)$('poseBar').hidden=true;}else if(me.pose==='prone')me.pose='stand';
-    const ix0=(keys.KeyD?1:0)-(keys.KeyA?1:0);let ix=ix0,iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+    const ix0=Math.max(-1,Math.min(1,(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x));let ix=ix0,iz=Math.max(-1,Math.min(1,(keys.KeyW?1:0)-(keys.KeyS?1:0)+joy.y));
     const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
     me.climbCd=Math.max(0,(me.climbCd||0)-dt);
     const alive=me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'||phase==='reveal');
@@ -1171,7 +1239,7 @@ function loop(now){
     plight.position.set(me.x,2.6,me.z);updListener();
     {const on=canWhistle(),gg=$('whGauge');gg.style.display=on?'block':'none';$('whBtn').hidden=!on;
       if(on){const pr=Math.min(1,(now-whLast)/(WH_SEC*1000));$('whArc').setAttribute('stroke-dashoffset',(150.8*(1-pr)).toFixed(1));$('whArc').setAttribute('stroke',`hsl(${Math.round(120*(1-pr))},90%,52%)`);}}
-    updWhDir(now);
+    updWhDir(now);if(IS_TOUCH)mobVis();
     const k=1-Math.exp(-12*dt);
     clones.forEach(c=>{stepPose(c.av,dt);updShadow(c.av);});
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));o.av.moving=!(now<snapT)&&Math.hypot(o.x-r.position.x,o.z-r.position.z)>.06;
