@@ -667,7 +667,7 @@ $('startBtn').onclick=()=>socket.emit('ready');
 $('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(false);
 const POSE_KEYS=Object.keys(POSES).filter(k=>k!=='stand'&&k!=='prone'&&k!=='climb'&&k!=='ceil');
 [...POSE_KEYS,'stand'].forEach((k,i)=>{const b=document.createElement('button');b.dataset.k=k;
-  b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.onclick=()=>setPose(k);$('poseBar').appendChild(b);});
+  b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){e.preventDefault();b._tp=performance.now();setPose(k);}});b.onclick=()=>{if(performance.now()-(b._tp||-1e4)<800)return;setPose(k);};$('poseBar').appendChild(b);});
 document.querySelectorAll('#dev button[data-k]').forEach(b=>b.onclick=()=>socket.emit('dev',{kind:b.dataset.k,delta:+b.dataset.d}));
 $('devStart').onclick=()=>socket.emit('dev-start');
 setPose('stand');
@@ -863,6 +863,7 @@ if(IS_TOUCH)document.body.classList.add('touch');
 })();
 // 누르고 있는 동안 가상 키가 눌린 것으로 처리
 (function(){
+  const tap=(id,fn)=>$(id).addEventListener('pointerdown',e=>{e.preventDefault();fn();});
   const hold=(id,codeFn)=>{const b=$(id);let code=null;
     b.addEventListener('pointerdown',e=>{e.preventDefault();code=codeFn();keys[code]=true;b.classList.add('on');});
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(code){keys[code]=false;code=null;}b.classList.remove('on');}));};
@@ -873,13 +874,13 @@ if(IS_TOUCH)document.body.classList.add('touch');
       keys.ControlLeft=true;held=true;});            // 땅에서는 Ctrl (술래 엎드리기)
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(held){keys.ControlLeft=false;held=false;}b.classList.remove('on');}));})();
   hold('mFire',()=>'Space');                // 술래 페인트 총
-  $('mRun').onclick=()=>{joy.run=!joy.run;$('mRun').classList.toggle('on',joy.run);};
-  $('mPose').onclick=()=>{if(seekLock())return;const pb=$('poseBar');pb.hidden=!pb.hidden;$('mPose').classList.toggle('on',!pb.hidden);};
-  $('mClone').onclick=()=>{
+  tap('mRun',()=>{joy.run=!joy.run;$('mRun').classList.toggle('on',joy.run);});
+  tap('mPose',()=>{if(seekLock())return;const pb=$('poseBar');pb.hidden=!pb.hidden;$('mPose').classList.toggle('on',!pb.hidden);});
+  tap('mClone',()=>{
     if(clones.has(me.id)){socket.emit('clone-del');return;}
     if(!(me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'))||lobbyWorld()){toast('분신은 숨는 시간·찾는 시간에만 쓸 수 있어요',1800);return;}
     if(paintMode){toast('꾸미기를 닫고 소환하세요',1500);return;}
-    summonClone();};
+    summonClone();});
 })();
 function mobVis(){
   const sh=(id,v)=>{const el=$(id);if(el.hidden===v)el.hidden=!v;};
