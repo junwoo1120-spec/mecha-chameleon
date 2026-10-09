@@ -956,7 +956,26 @@ function camAt(ty,yaw,pitch,dist){
 }
 
 /* ---------- 벽 타기 ---------- */
-function releaseWall(cd=.4){me.climb=null;me.vy=0;me.climbCd=cd;}
+function releaseWall(cd=.4){
+  const c=me.climb;me.climb=null;me.vy=0;me.climbCd=cd;
+  if(c&&!c.ceil&&(c.dx||c.dz)){                 // 벽에 바짝 붙어 있었으니 떨어질 때 벽 밖으로 밀어내서 안 끼게
+    const rad=.45*scaleOf(me.role)/.72,D=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let k=0;k<24&&hitMaze(me.x,me.z,rad,me.y,.05);k++){
+      let px=0,pz=0;for(const [dx,dz] of D)if(wallAt(me.x+dx*(rad+.02),me.z+dz*(rad+.02))){px-=dx;pz-=dz;}
+      if(!px&&!pz){px=-c.dx;pz=-c.dz;}
+      const l=Math.hypot(px,pz)||1;me.x+=px/l*.03;me.z+=pz/l*.03;}
+  }
+}
+function unstick(rad){
+  if(!hitWall(me.x,me.z,rad,me.y,.05))return;
+  const D=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(let k=0;k<60&&hitWall(me.x,me.z,rad,me.y,.05);k++){
+    let px=0,pz=0;for(const [dx,dz] of D)if(solidAt(me.x+dx*(rad+.02),me.z+dz*(rad+.02))){px-=dx;pz-=dz;}
+    if(px||pz){const l=Math.hypot(px,pz);me.x+=px/l*.03;me.z+=pz/l*.03;continue;}
+    let ok=false;for(const [dx,dz] of D){const d=.05*(k+1);if(!hitWall(me.x+dx*d,me.z+dz*d,rad,me.y,.05)){me.x+=dx*d;me.z+=dz*d;ok=true;break;}}
+    if(!ok)break;
+  }
+}
 function tryGrab(rad,s){
   const hd=.255*s+.012;   // 몸 두께만큼만 벽에서 떨어져 붙음
   const f=[Math.sin(me.ry),Math.cos(me.ry)];let best=null,bs=.5;
@@ -1056,7 +1075,7 @@ function updShadow(av){
   SHPTS.forEach(([b,x,y,z,rd],i)=>{
     _bv.set(x,y,z);av.piv[b].localToWorld(_bv);
     const m=av.shm[i],fade=Math.max(0,1-(_bv.y-g)/(3.2*sc));          // 높이 떠 있을수록(점프·벽·천장) 옅게
-    m.position.set(_bv.x,g+.012,_bv.z);m.scale.setScalar(rd*2*sc);m.material.opacity=.2*fade;});
+    m.position.set(_bv.x,g+.012,_bv.z);m.scale.setScalar(rd*2.7*sc);m.material.opacity=.4*fade;});   // 몸보다 넓게 깔려 윤곽 둘레가 어두운 테두리로 보임
 }
 function dropShadow(av){if(av&&av.shg){scene.remove(av.shg);av.shm.forEach(m=>m.material.dispose());av.shg=null;}}
 
@@ -1114,6 +1133,7 @@ function loop(now){
     avMe.moving=moving;avMe.run=moving&&run;avMe.air=!me.climb&&me.y>gN+.05;avMe.rate=lobbyWorld()?1.3:.845;
     if(fpv()){me.ry=me.yaw+Math.PI;if(keys.Space)fire(now);}
     avMe.armed=avMe.gun.visible=armedRole(me.role);avMe.gun.rotation.x=me.pitch;
+    if(!me.climb||me.climb.ceil)unstick(rad);   // 벽에 껴 있으면 밖으로
     avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.flip=!!(me.climb&&me.climb.ceil);avMe.root.rotation.y=me.ry;avMe.target=curPose();stepPose(avMe,dt);updShadow(avMe);
     {const tgt=alive&&!lobbyWorld(),was=!!me.buried;let b=false;
       if(tgt){const r=buryRatio(avMe);b=was?r>=.2:r>=.32;}
