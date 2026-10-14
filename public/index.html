@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>메챠 카멜레온 · 백룸</title>
 <style>
 *{box-sizing:border-box}
@@ -34,6 +34,19 @@ button:disabled{opacity:.4;cursor:default}
 #poseBar button{padding:6px 10px;font-size:13px}
 #paintBtn{position:fixed;z-index:7;bottom:10px;right:10px}
 #whBtn{position:fixed;z-index:9;bottom:56px;right:10px;font-size:16px;padding:10px 14px}
+#gmk{position:fixed;inset:0;pointer-events:none;z-index:8;overflow:hidden;display:none}
+.wmk.hd .ar{color:#7dff8a;text-shadow:0 0 6px #000,0 0 12px #00b84a}.wmk.sk .ar{color:#ff5a5a;text-shadow:0 0 6px #000,0 0 12px #c00}
+#joy,.tbtn{display:none}
+body.touch #joy:not([hidden]),body.touch .tbtn:not([hidden]){display:block}
+#joy{position:fixed;left:24px;bottom:28px;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.35);z-index:9;touch-action:none;user-select:none;-webkit-user-select:none}
+#joyKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,255,255,.45);border:2px solid rgba(255,255,255,.85);pointer-events:none}
+.tbtn{position:fixed;z-index:9;border-radius:50%;border:2px solid rgba(255,255,255,.75);background:rgba(0,0,0,.4);color:#fff;font-weight:700;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+#btnJump{right:24px;bottom:34px;width:84px;height:84px;font-size:16px}
+#btnFire{right:122px;bottom:40px;width:68px;height:68px;font-size:14px}
+#btnDown{right:34px;bottom:130px;width:60px;height:60px;font-size:13px}
+#btnRel{right:104px;bottom:128px;width:60px;height:60px;font-size:12px}
+body.touch #whBtn{right:24px;bottom:204px}
+body.touch #paintBtn{right:auto;left:24px;bottom:176px}
 #whDir{position:fixed;inset:0;pointer-events:none;z-index:8;overflow:hidden}
 .wmk{position:absolute;left:0;top:0;width:0;height:0}
 .wmk .ar{position:absolute;left:-20px;top:-20px;width:40px;height:40px;font-size:34px;line-height:40px;text-align:center;color:#ffe14a;text-shadow:0 0 6px #000,0 0 14px #ff8a00}
@@ -64,16 +77,6 @@ button:disabled{opacity:.4;cursor:default}
 #loginHint{font-size:13px;color:#f4efc8;opacity:.8;text-shadow:0 1px 4px #000}
 #titleFig{width:min(30vw,340px);height:auto;flex:none}
 @media (max-width:800px){#titleFig{display:none}}
-/* ---- 모바일 조작 ---- */
-#joy,#mAct{display:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
-body.touch #joy{display:block}
-body.touch #mAct{display:grid}
-body.touch #help{display:none}
-#joy{position:fixed;z-index:9;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;background:rgba(244,239,200,.12);border:2px solid rgba(244,239,200,.35)}
-#joyKnob{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(244,239,200,.5);border:2px solid rgba(244,239,200,.8);pointer-events:none}
-#mAct{position:fixed;z-index:9;right:10px;bottom:110px;grid-template-columns:repeat(2,64px);gap:6px}
-#mAct button{height:46px;padding:0;font-size:13px;line-height:1.15;white-space:pre-line;opacity:.92;touch-action:none}
-body.touch #poseBar{z-index:10;left:12px;right:150px;transform:none;max-width:none;bottom:176px;justify-content:flex-start}
 #ver{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;z-index:2}
 </style></head><body>
 <canvas id="c"></canvas>
@@ -94,22 +97,10 @@ body.touch #poseBar{z-index:10;left:12px;right:150px;transform:none;max-width:no
 <div id="whDir"></div>
 <svg id="whGauge" class="ui" viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"/><circle id="whArc" cx="30" cy="30" r="24" fill="none" stroke="#3ddc4a" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 30 30)"/></svg>
 <button id="whBtn" hidden>🎵 휘파람 (H)</button>
+<div id="gmk"></div>
+<div id="joy" hidden><div id="joyKnob"></div></div>
+<button id="btnJump" class="tbtn" hidden>점프</button><button id="btnFire" class="tbtn" hidden>🔫 발사</button><button id="btnDown" class="tbtn" hidden>⬇ 내려</button><button id="btnRel" class="tbtn" hidden>✋ 떨어져</button>
 <button id="paintBtn">🎨 꾸미기 (F)</button>
-<div id="joy"><div id="joyKnob"></div></div>
-<div id="mAct">
-  <button id="mFire" hidden>🔫
-발사</button>
-  <button id="mJump">⬆
-점프</button>
-  <button id="mDown">⬇
-내려가기</button>
-  <button id="mRun">🏃
-달리기</button>
-  <button id="mPose">🧍
-포즈</button>
-  <button id="mClone" hidden>👥
-분신 소환</button>
-</div>
 <div id="panel" hidden>
   <h3>꾸미기</h3>
   <div id="msgLock">지금은 색을 칠할 수 없어요 (포즈는 가능)</div>
@@ -550,7 +541,7 @@ const kor=s=>s<60?`${s}초`:s%60?`${Math.floor(s/60)}분 ${s%60}초`:`${s/60}분
 const others=new Map();
 const P_MAX=1.55;   // 정수리가 보이는 각도
 let paintMode=false,pYaw=.6,pPitch=.15,pDist=5,color='#d9c86a',size=12,mode='brush',stroke=null,pickReq=null,lastMode='brush',snapT=0;
-const dirty=new Set(),keys={},joy={x:0,y:0,run:false};
+const dirty=new Set(),keys={};
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
 
 const scaleOf=role=>phase==='lobby'?.72:role==='seeker'?.648:.288;
@@ -559,7 +550,8 @@ const canPaint=()=>phase==='lobby'||phase==='ended'||phase==='hiding'||phase==='
 const blind=()=>false;
 const frozen=()=>phase==='reveal'&&me.role==='hider';   // 공개 타임: 도망자는 이동·점프·벽타기·포즈 변경 불가
 const fpv=()=>me.role==='seeker'&&(phase==='hiding'||phase==='seeking'||phase==='reveal')&&!paintMode;
-const pitchRange=()=>fpv()?[-1.2,1.2]:me.climb?[-1.1,1]:[-.15,1];
+const ghost=()=>joined&&(me.found||me.role==='spectator')&&(phase==='hiding'||phase==='seeking'||phase==='reveal');   // 죽으면 유령: 아무에게도 안 보이고 프리캠
+const pitchRange=()=>ghost()?[-1.55,1.55]:fpv()?[-1.2,1.2]:me.climb?[-1.1,1]:[-.15,1];
 const curPose=()=>me.pose;   // 벽·천장에서도 고른 포즈 그대로 (천장은 몸만 뒤집음)
 
 function addOther(d){
@@ -587,8 +579,8 @@ function renderHud(){
   let t='';
   if(phase==='lobby')t=`대기실 · ${rosterList.length}명`;
   else if(phase==='hiding')t=me.role==='seeker'?'술래 대기실: 숨는 시간이 끝나면 시작해요':`숨으세요! 술래: ${sks||'?'}`;
-  else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'들켰어요 (관전)':'들키지 마세요!';
-  else if(phase==='reveal')t=me.role==='seeker'?`공개 타임! 도망자들이 얼마나 잘 숨었는지 보세요 (${hiders}마리)`:me.found?'공개 타임 (관전)':'공개 타임! 움직이지 마세요';
+  else if(phase==='seeking')t=me.role==='seeker'?`남은 카멜레온 ${hiders}마리`:me.role==='spectator'?'관전 중':me.found?'유령 모드 (프리캠)':'들키지 마세요!';
+  else if(phase==='reveal')t=me.role==='seeker'?`공개 타임! 도망자들이 얼마나 잘 숨었는지 보세요 (${hiders}마리)`:me.found?'공개 타임 (유령)':'공개 타임! 움직이지 마세요';
   else if(phase==='loading')t='Loading...';
   else t='게임 종료';
   $('phase').textContent=t;
@@ -606,13 +598,13 @@ function renderHud(){
   $('panel').classList.toggle('lock',!canPaint());
 }
 function setPaint(on){
-  if(blind()||phase==='loading')on=false;
+  if(blind()||phase==='loading'||ghost())on=false;
   paintMode=on;$('panel').hidden=!on;$('cross').hidden=on;
   if(on&&document.pointerLockElement)document.exitPointerLock();
   renderHud();
 }
 const seekLock=()=>me.role==='seeker'&&phase!=='lobby';
-function setPose(n){if(seekLock()||frozen())return;if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poseBar').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
+function setPose(n){if(seekLock()||frozen()||ghost())return;if(n!=='stand'&&me.pose===n)n='stand';me.pose=n;[...$('poseBar').children].forEach(b=>b.classList.toggle('on',b.dataset.k===n));}
 
 /* ---------- 소켓 ---------- */
 socket.on('welcome',d=>{
@@ -653,7 +645,8 @@ socket.on('tick',d=>{left=d.left;renderHud();});
 socket.on('states',list=>list.forEach(s=>{const o=others.get(s.id);if(o){o.x=s.x;o.z=s.z;o.y=s.y;o.pit=s.pit;o.run=s.run;o.ry=s.ry;o.pose=s.pose;o.air=!!s.air;o.fl=!!s.fl;}}));
 socket.on('tex',d=>{const o=others.get(d.id);if(o)applyFaces(o.av,d.part,d.faces);});
 socket.on('shot',d=>{spawnTracer(d.o,d.p,d.c);if(d.n)addDecal(d.p,d.n,d.c);});
-socket.on('found',d=>{toast(d.id===me.id?'술래에게 들켰어요!':`${d.nick} 발견!`);if(d.id===me.id){me.exposed=false;releaseWall(0);}});
+socket.on('found',d=>{toast(d.id===me.id?'술래에게 들켰어요!':`${d.nick} 발견!`);if(d.id===me.id){me.exposed=false;releaseWall(0);me.vy=0;me.y=Math.max(me.y,.9);setPaint(false);$('poseBar').hidden=true;
+    setTimeout(()=>toast('👻 유령이 됐어요! 프리캠: WASD 이동 · Space 위 · Ctrl 아래 · Shift 빠르게 (벽 통과)',4500),1600);}});
 socket.on('clone',makeClone);
 socket.on('clone-del',id=>removeClone(id));
 socket.on('clones-clear',()=>[...clones.keys()].forEach(removeClone));
@@ -667,7 +660,7 @@ $('startBtn').onclick=()=>socket.emit('ready');
 $('paintBtn').onclick=()=>setPaint(!paintMode);$('closeP').onclick=()=>setPaint(false);
 const POSE_KEYS=Object.keys(POSES).filter(k=>k!=='stand'&&k!=='prone'&&k!=='climb'&&k!=='ceil');
 [...POSE_KEYS,'stand'].forEach((k,i)=>{const b=document.createElement('button');b.dataset.k=k;
-  b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){e.preventDefault();b._tp=performance.now();setPose(k);}});b.onclick=()=>{if(performance.now()-(b._tp||-1e4)<800)return;setPose(k);};$('poseBar').appendChild(b);});
+  b.textContent=(k==='stand'?0:i+1)+' '+POSES[k].n;b.onclick=()=>setPose(k);$('poseBar').appendChild(b);});
 document.querySelectorAll('#dev button[data-k]').forEach(b=>b.onclick=()=>socket.emit('dev',{kind:b.dataset.k,delta:+b.dataset.d}));
 $('devStart').onclick=()=>socket.emit('dev-start');
 setPose('stand');
@@ -713,7 +706,7 @@ addEventListener('keydown',e=>{
   if(joined&&(e.ctrlKey||e.code.startsWith('Arrow')||e.code==='Space'||e.code==='Tab'))e.preventDefault();
   if(e.code==='KeyF'&&joined&&!e.repeat)setPaint(!paintMode);
   if(e.code==='KeyH'&&joined&&!e.repeat)whistleNow();
-  if(e.code==='KeyR'&&joined&&!e.repeat&&!seekLock())$('poseBar').hidden=!$('poseBar').hidden;
+  if(e.code==='KeyR'&&joined&&!e.repeat&&!seekLock()&&!ghost())$('poseBar').hidden=!$('poseBar').hidden;
   if(e.code==='KeyI'&&paintMode)setMode('pick');
   if(e.code==='Enter'&&joined&&phase==='lobby'&&!paintMode&&!e.repeat)socket.emit('ready');
   const me0=rosterList.find(q=>q.id===me.id);
@@ -801,6 +794,63 @@ function updWhDir(now){
     m.el.style.opacity=age>WH_SHOW-900?Math.max(0,(WH_SHOW-age)/900):1;
   });
 }
+/* ---------- 유령 프리캠: 살아있는 모든 사람의 위치를 화면에 표시 (화면 안이면 머리 위, 밖이면 가장자리 화살표) ---------- */
+const gMarks=new Map(),_gv=new THREE.Vector3();
+function updGhostMarks(on){
+  const box=$('gmk');
+  if(!on){if(gMarks.size){gMarks.forEach(m=>m.el.remove());gMarks.clear();}box.style.display='none';return;}
+  box.style.display='block';
+  const W=innerWidth,Hh=innerHeight,mx=70,my=60,seen=new Set();camera.updateMatrixWorld();
+  others.forEach((o,id)=>{
+    if(o.found||o.role==='spectator')return;
+    seen.add(id);let m=gMarks.get(id);
+    if(!m){const el=document.createElement('div');el.className='wmk '+(o.role==='seeker'?'sk':'hd');el.innerHTML='<div class="ar">▲</div><div class="tx"></div>';box.appendChild(el);m={el};gMarks.set(id,m);}
+    const p=o.av.root.position;_gv.set(p.x,p.y+scaleOf(o.role),p.z);
+    const d=Math.hypot(p.x-me.x,p.y-me.y,p.z-me.z);_gv.project(camera);
+    const behind=_gv.z>1;let sx=behind?-_gv.x:_gv.x,sy=behind?-_gv.y:_gv.y,px,py,ang;
+    if(!behind&&Math.abs(sx)<.9&&Math.abs(sy)<.85){px=(sx*.5+.5)*W;py=(-sy*.5+.5)*Hh;ang=Math.PI;}
+    else{let dx=sx*W/2,dy=-sy*Hh/2;if(Math.abs(dx)<1&&Math.abs(dy)<1)dy=Hh/2;
+      const t=Math.min(Math.abs(dx)>1e-3?(W/2-mx)/Math.abs(dx):1e9,Math.abs(dy)>1e-3?(Hh/2-my)/Math.abs(dy):1e9);
+      px=W/2+dx*t;py=Hh/2+dy*t;ang=Math.atan2(dx,-dy);}
+    m.el.style.transform=`translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`;m.el.firstChild.style.transform=`rotate(${ang.toFixed(3)}rad)`;
+    m.el.lastChild.textContent=`${o.role==='seeker'?'🔴':'🦎'} ${o.nick} · ${Math.round(d)}m`;
+  });
+  gMarks.forEach((m,id)=>{if(!seen.has(id)){m.el.remove();gMarks.delete(id);}});
+}
+/* ---------- 모바일 조이스틱(왼쪽 아래) · 점프(오른쪽 아래) ---------- */
+const IS_TOUCH=matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&!matchMedia('(pointer:fine)').matches);
+if(IS_TOUCH)document.body.classList.add('touch');
+const joyEl=$('joy'),joyKnob=$('joyKnob');let joyId=null;
+function joySet(e){
+  const r=joyEl.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-(r.left+R),dy=e.clientY-(r.top+R);const m=Math.hypot(dx,dy);
+  if(m>R){dx*=R/m;dy*=R/m;}
+  joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
+  const nx=dx/R,ny=dy/R;
+  keys.KeyW=ny<-.35;keys.KeyS=ny>.35;keys.KeyA=nx<-.35;keys.KeyD=nx>.35;keys.ShiftLeft=Math.hypot(nx,ny)>.93;   // 끝까지 밀면 달리기
+}
+const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;joyKnob.style.transform='';keys.KeyW=keys.KeyS=keys.KeyA=keys.KeyD=keys.ShiftLeft=false;};
+joyEl.addEventListener('pointerdown',e=>{joyId=e.pointerId;try{joyEl.setPointerCapture(e.pointerId);}catch(_){}joySet(e);e.preventDefault();});
+joyEl.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joySet(e);});
+joyEl.addEventListener('pointerup',joyEnd);joyEl.addEventListener('pointercancel',joyEnd);
+function holdBtn(id,down,up){const b=$(id);
+  b.addEventListener('pointerdown',e=>{try{b.setPointerCapture(e.pointerId);}catch(_){}down();e.preventDefault();});
+  b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);}
+let jumpKey=null;
+holdBtn('btnJump',()=>{jumpKey=(fpv()&&!ghost())?'KeyV':'Space';keys[jumpKey]=true;},()=>{if(jumpKey){keys[jumpKey]=false;jumpKey=null;}});
+holdBtn('btnFire',()=>{keys.Space=true;},()=>{keys.Space=false;});
+holdBtn('btnDown',()=>{keys.ControlLeft=true;},()=>{keys.ControlLeft=false;});
+$('btnRel').addEventListener('pointerdown',e=>{e.preventDefault();if(me.climb)releaseWall(.5);});
+function updTouchUI(gh){
+  if(!IS_TOUCH)return;
+  const on=joined&&!paintMode&&phase!=='loading';
+  $('joy').hidden=!on;$('btnJump').hidden=!on;
+  $('btnFire').hidden=!(on&&fpv()&&!gh);
+  $('btnDown').hidden=!(on&&(me.climb||gh||fpv()));
+  $('btnRel').hidden=!(on&&me.climb&&!gh);
+  $('btnJump').textContent=gh?'⬆ 위':'점프';
+  $('btnDown').textContent=gh?'⬇ 아래':(me.climb?'⬇ 내려':'엎드려');
+  $('paintBtn').style.display=gh?'none':'';
+}
 /* ---------- 시야 줌: 마우스 휠 / 모바일 두 손가락 핀치 (꾸미기 중·평소 모두) ---------- */
 let camZoom=1;
 function zoomCam(f){
@@ -816,78 +866,18 @@ canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;
   tps.set(e.pointerId,[e.clientX,e.clientY]);
   if(tps.size===2){pinched=true;pinchD=tpDist();pinchC=tpCen();if(paintMode)flush();}},true);
 canvas.addEventListener('pointermove',e=>{if(e.pointerType!=='touch'||!tps.has(e.pointerId))return;
-  tps.set(e.pointerId,[e.clientX,e.clientY]);
+  const pv=tps.get(e.pointerId);tps.set(e.pointerId,[e.clientX,e.clientY]);
+  if(tps.size===1&&!pinched&&!paintMode&&joined){me.yaw-=(e.clientX-pv[0])*.006;const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch+(e.clientY-pv[1])*.006));}   // 한 손가락 드래그: 시야 회전
   if(tps.size===2){const d=tpDist(),cn=tpCen();zoomCam(pinchD/d);pinchD=d;
     if(paintMode){pYaw-=(cn[0]-pinchC[0])*.01;pPitch=Math.max(-.6,Math.min(P_MAX,pPitch+(cn[1]-pinchC[1])*.01));}pinchC=cn;}},true);
 const tpEnd=e=>{if(e.pointerType!=='touch')return;tps.delete(e.pointerId);if(!tps.size)pinched=false;};
 canvas.addEventListener('pointerup',tpEnd,true);canvas.addEventListener('pointercancel',tpEnd,true);
 canvas.addEventListener('mousedown',e=>{
-  if(!joined||paintMode||IS_TOUCH)return;
+  if(!joined||paintMode)return;
   if(document.pointerLockElement!==canvas){canvas.requestPointerLock();return;}
   if(e.button===0)tryTag();
 });
 document.addEventListener('pointerlockchange',()=>{$('cross').hidden=paintMode||document.pointerLockElement!==canvas;});
-
-/* ---------- 모바일 조작: 조이스틱 / 시점 드래그 / 버튼 ---------- */
-const IS_TOUCH=matchMedia('(pointer:coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-if(IS_TOUCH)document.body.classList.add('touch');
-(function(){
-  const base=$('joy'),knob=$('joyKnob'),R=48,DZ=.18,SNAP=.25;let jid=null,cx=0,cy=0;
-  const snap=v=>Math.abs(v)<SNAP?0:v;
-  function upd(e){
-    let dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy);
-    if(d>R){dx*=R/d;dy*=R/d;}
-    knob.style.transform=`translate(${dx}px,${dy}px)`;
-    if(Math.hypot(dx,dy)/R<DZ){joy.x=0;joy.y=0;}else{joy.x=snap(dx/R);joy.y=snap(-dy/R);}   // 위쪽 = 앞으로
-  }
-  base.addEventListener('pointerdown',e=>{
-    if(jid!==null)return;jid=e.pointerId;base.setPointerCapture(e.pointerId);
-    const r=base.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;upd(e);e.preventDefault();});
-  base.addEventListener('pointermove',e=>{if(e.pointerId===jid)upd(e);});
-  const end=e=>{if(e.pointerId!==jid)return;jid=null;joy.x=0;joy.y=0;knob.style.transform='';};
-  base.addEventListener('pointerup',end);base.addEventListener('pointercancel',end);
-  addEventListener('blur',()=>{jid=null;joy.x=0;joy.y=0;knob.style.transform='';});
-})();
-// 화면 한 손가락 드래그 = 시점 회전 (두 손가락은 기존 핀치 확대)
-(function(){
-  const lk=new Map();
-  canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')lk.set(e.pointerId,[e.clientX,e.clientY]);});
-  canvas.addEventListener('pointermove',e=>{
-    const p=lk.get(e.pointerId);if(!p||e.pointerType!=='touch')return;
-    const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;
-    if(!joined||paintMode||tps.size>1)return;
-    me.yaw-=dx*.005;const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch+dy*.005));
-  });
-  const e2=e=>lk.delete(e.pointerId);
-  canvas.addEventListener('pointerup',e2);canvas.addEventListener('pointercancel',e2);
-})();
-// 누르고 있는 동안 가상 키가 눌린 것으로 처리
-(function(){
-  const tap=(id,fn)=>$(id).addEventListener('pointerdown',e=>{e.preventDefault();fn();});
-  const hold=(id,codeFn)=>{const b=$(id);let code=null;
-    b.addEventListener('pointerdown',e=>{e.preventDefault();code=codeFn();keys[code]=true;b.classList.add('on');});
-    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(code){keys[code]=false;code=null;}b.classList.remove('on');}));};
-  hold('mJump',()=>fpv()?'KeyV':'Space');   // 도망자: Space(점프/벽타기/올라가기), 술래: V
-  (function(){const b=$('mDown');let held=false;
-    b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('on');
-      if(me.climb){releaseWall(.5);return;}          // 벽·천장에서 바로 떨어지기
-      keys.ControlLeft=true;held=true;});            // 땅에서는 Ctrl (술래 엎드리기)
-    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(held){keys.ControlLeft=false;held=false;}b.classList.remove('on');}));})();
-  hold('mFire',()=>'Space');                // 술래 페인트 총
-  tap('mRun',()=>{joy.run=!joy.run;$('mRun').classList.toggle('on',joy.run);});
-  tap('mPose',()=>{if(seekLock())return;const pb=$('poseBar');pb.hidden=!pb.hidden;$('mPose').classList.toggle('on',!pb.hidden);});
-  tap('mClone',()=>{
-    if(clones.has(me.id)){socket.emit('clone-del');return;}
-    if(!(me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'))||lobbyWorld()){toast('분신은 숨는 시간·찾는 시간에만 쓸 수 있어요',1800);return;}
-    if(paintMode){toast('꾸미기를 닫고 소환하세요',1500);return;}
-    summonClone();});
-})();
-function mobVis(){
-  const sh=(id,v)=>{const el=$(id);if(el.hidden===v)el.hidden=!v;};
-  sh('mFire',fpv());sh('mClone',me.role==='hider'&&!me.found);sh('mPose',!seekLock());
-  const cl=$('mClone'),want=clones.has(me.id)?'🗑\n분신 삭제':'👥\n분신 소환';if(cl.textContent!==want)cl.textContent=want;
-  $('mPose').classList.toggle('on',!$('poseBar').hidden);
-}
 
 const SK={av:null,key:'',pos:null};
 function skinnedPositions(av){
@@ -1118,9 +1108,9 @@ function cornerTurn(c,lx,lz,hd,hr,wallEnded,sgn,ixs){
 function climbStep(dt,s,rad,rS,ix,sy,cy,ctrl){
   const c=me.climb,sp=1.3*1.4,topY=H-2.55*s-.03,hd=.255*s+.012,hr=hd*.85;   // 벽 이동속도 1.4배
   if(c.ceil){                                   // 천장: WASD 이동, 떨어지기는 Shift만
-    const iz=((keys.KeyW||joy.y>.5)?1:0)-((keys.KeyS||joy.y<-.5)?1:0),ixx=ix;me.y=H-.02;me.vy=0;
+    const iz=(keys.KeyW?1:0)-(keys.KeyS?1:0),ixx=ix;me.y=H-.02;me.vy=0;
     if(!ixx&&!iz)return false;
-    const l=Math.hypot(ixx,iz),a=ixx/l,b=iz/l,SPD=SPEED*.65*.55*((ctrl||joy.run)?1.4:1);   // 천장: Ctrl 누르면 달리기
+    const l=Math.hypot(ixx,iz),a=ixx/l,b=iz/l,SPD=SPEED*.65*.55*(ctrl?1.4:1);   // 천장: Ctrl 누르면 달리기
     const dx=(-sy*b+cy*a)*SPD*dt,dz=(-cy*b-sy*a)*SPD*dt;
     if(!hitWall(me.x+dx,me.z,rad,me.y,.05))me.x+=dx;
     if(!hitWall(me.x,me.z+dz,rad,me.y,.05))me.z+=dz;
@@ -1130,9 +1120,9 @@ function climbStep(dt,s,rad,rS,ix,sy,cy,ctrl){
   if(!wallAt(me.x+c.dx*(hd+.06),me.z+c.dz*(hd+.06))){releaseWall();return false;}
   // 꼭대기에서 천장 쪽을 보고 W → 천장에 붙기
   if(me.y>=topY-.05&&!c.hint){c.hint=1;toast('천장을 올려다보고 W를 누르면 천장에 붙어요',2500);}
-  if((keys.KeyW||joy.y>.5)&&me.y>=topY-.05&&me.pitch<-.2){me.climb={ceil:true,dx:0,dz:0};me.y=H-.02;me.vy=0;return false;}
+  if(keys.KeyW&&me.y>=topY-.05&&me.pitch<-.2){me.climb={ceil:true,dx:0,dz:0};me.y=H-.02;me.vy=0;return false;}
   // 벽 반대 방향을 보고 W → 바로 떨어지기
-  if((keys.KeyW||joy.y>.5)&&(-sy*c.dx-cy*c.dz)<-.5){releaseWall(.5);return false;}
+  if(keys.KeyW&&(-sy*c.dx-cy*c.dz)<-.5){releaseWall(.5);return false;}
   const tx=-c.dz,tz=c.dx,sg=(cy*tx-sy*tz)>=0?1:-1;       // 화면 기준 오른쪽이 되는 벽면 방향
   c.turnT=Math.max(0,(c.turnT||0)-dt);
   let sgn=sg*Math.sign(ix);
@@ -1207,18 +1197,24 @@ let last=performance.now(),lastSend=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(joined){
-    const s=scaleOf(me.role),rad=.45*s/.72,rS=rad*.6;
-    const ctrl=!!(keys.ControlLeft||keys.ControlRight),shift=!!(keys.ShiftLeft||keys.ShiftRight)||joy.run,lockS=seekLock(),prone=lockS&&ctrl;
-    let moving=false;const run=(shift&&!prone&&!me.climb)||!!(me.climb&&me.climb.ceil&&(ctrl||joy.run)&&!lockS);
+    const s=scaleOf(me.role),rad=.45*s/.72,rS=rad*.6,gh=ghost();
+    const ctrl=!!(keys.ControlLeft||keys.ControlRight),shift=!!(keys.ShiftLeft||keys.ShiftRight),lockS=seekLock(),prone=lockS&&ctrl;
+    let moving=false;const run=(shift&&!prone&&!me.climb)||!!(me.climb&&me.climb.ceil&&ctrl&&!lockS);
     if(lockS){me.pose=prone?'prone':'stand';if(!$('poseBar').hidden)$('poseBar').hidden=true;}else if(me.pose==='prone')me.pose='stand';
-    const ix0=Math.max(-1,Math.min(1,(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x));let ix=ix0,iz=Math.max(-1,Math.min(1,(keys.KeyW?1:0)-(keys.KeyS?1:0)+joy.y));
+    const ix0=(keys.KeyD?1:0)-(keys.KeyA?1:0);let ix=ix0,iz=(keys.KeyW?1:0)-(keys.KeyS?1:0);
     const sy=Math.sin(me.yaw),cy=Math.cos(me.yaw);
     me.climbCd=Math.max(0,(me.climbCd||0)-dt);
     const alive=me.role==='hider'&&!me.found&&(phase==='hiding'||phase==='seeking'||phase==='reveal');
     if(!me.climb&&alive&&!lobbyWorld()&&keys.Space&&!paintMode&&!frozen()&&me.climbCd<=0)tryGrab(rad,s);
     if(me.climb&&(!alive||lobbyWorld()))releaseWall(0);
     const g0=supportH(me.x,me.z,rS,me.y,.06),air=!me.climb&&(me.vy!==0||me.y>g0+.02),tol=air?LEDGE(s):.06;
-    if(me.climb&&!paintMode&&!blind()&&!frozen()&&phase!=='loading')moving=!!climbStep(dt,s,rad,rS,ix0,sy,cy,ctrl);
+    if(gh){   // 유령 프리캠: 벽 통과, 모든 방향 비행
+      me.climb=null;me.vy=0;me.pose='stand';
+      const fw=(keys.KeyW?1:0)-(keys.KeyS?1:0),up=(keys.Space?1:0)-(ctrl?1:0),spd=shift?22:10,cp=Math.cos(me.pitch);
+      me.x+=(-sy*cp*fw+cy*ix0)*spd*dt;me.y+=(-Math.sin(me.pitch)*fw+up)*spd*dt;me.z+=(-cy*cp*fw-sy*ix0)*spd*dt;
+      const ext=N*T+8;me.x=Math.max(-8,Math.min(ext,me.x));me.z=Math.max(-8,Math.min(ext,me.z));me.y=Math.max(.3,Math.min(16,me.y));
+    }
+    else if(me.climb&&!paintMode&&!blind()&&!frozen()&&phase!=='loading')moving=!!climbStep(dt,s,rad,rS,ix0,sy,cy,ctrl);
     else if(!me.climb&&!paintMode&&!blind()&&!frozen()&&phase!=='loading'&&(ix||iz)){
       const l=Math.hypot(ix,iz);ix/=l;iz/=l;
       const SPD=SPEED*(lobbyWorld()?1:.65)*(run?1.4:1)*(prone?.35:1),dx=(-sy*iz+cy*ix)*SPD*dt,dz=(-cy*iz-sy*ix)*SPD*dt;moving=true;
@@ -1229,7 +1225,7 @@ function loop(now){
     if(paintMode){if(keys.ArrowLeft)pYaw+=2*dt;if(keys.ArrowRight)pYaw-=2*dt;if(keys.ArrowUp)pPitch=Math.max(-.6,pPitch-1.6*dt);if(keys.ArrowDown)pPitch=Math.min(P_MAX,pPitch+1.6*dt);}
     else{if(keys.ArrowLeft)me.yaw+=2.2*dt;if(keys.ArrowRight)me.yaw-=2.2*dt;
       if(keys.ArrowUp)me.pitch=Math.max(pitchRange()[0],me.pitch-1.6*dt);if(keys.ArrowDown)me.pitch=Math.min(pitchRange()[1],me.pitch+1.6*dt);}
-    if(!me.climb){
+    if(!me.climb&&!gh){
       const g=supportH(me.x,me.z,rS,me.y,tol);
       if((fpv()?keys.KeyV:keys.Space)&&!paintMode&&!blind()&&!frozen()&&phase!=='loading'&&!prone&&me.vy===0&&me.y<=g+.001)me.vy=7.5*(.5+.5*s/.72);
       if(me.vy<=0&&g>me.y+.0001){me.y=Math.min(g,me.y+Math.max(4,(g-me.y)*14)*dt);me.vy=0;}   // 비슷한 높이면 올라타기
@@ -1240,7 +1236,7 @@ function loop(now){
     avMe.moving=moving;avMe.run=moving&&run;avMe.air=!me.climb&&me.y>gN+.05;avMe.rate=lobbyWorld()?1.3:.845;
     if(fpv()){me.ry=me.yaw+Math.PI;if(keys.Space)fire(now);}
     avMe.armed=avMe.gun.visible=armedRole(me.role);avMe.gun.rotation.x=me.pitch;
-    if(!me.climb||me.climb.ceil)unstick(rad);   // 벽에 껴 있으면 밖으로
+    if(!gh&&(!me.climb||me.climb.ceil))unstick(rad);   // 벽에 껴 있으면 밖으로
     avMe.root.scale.setScalar(s);avMe.root.position.set(me.x,me.y,me.z);avMe.flip=!!(me.climb&&me.climb.ceil);avMe.root.rotation.y=me.ry;avMe.target=curPose();stepPose(avMe,dt);updShadow(avMe);
     {const tgt=alive&&!lobbyWorld(),was=!!me.buried;let b=false;
       if(tgt){const r=buryRatio(avMe);b=was?r>=.2:r>=.32;}
@@ -1248,16 +1244,17 @@ function loop(now){
       if(b)buryT=Math.max(0,buryT-dt);
       const bw=$('buryWarn');bw.hidden=!b;if(b)bw.textContent=buryT>0?`⚠ 몸이 너무 파묻혔어요! ${Math.ceil(buryT)}초 뒤 위치가 공개돼요`:'📍 위치가 공개됐어요! 빠져나오세요';
       avMe.red.visible=!!me.exposed||(phase==='reveal'&&me.role==='hider'&&!me.found);}
-    const fp=fpv();avMe.root.visible=!fp;vmRoot.visible=fp;kick=Math.max(0,kick-dt*7);vmRoot.position.z=-.5+kick*.09;vmRoot.rotation.x=kick*.12;updateFx(dt);{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch));}
+    const fp=fpv();avMe.root.visible=!fp&&!gh;vmRoot.visible=fp&&!gh;kick=Math.max(0,kick-dt*7);vmRoot.position.z=-.5+kick*.09;vmRoot.rotation.x=kick*.12;updateFx(dt);{const [lo,hi]=pitchRange();me.pitch=Math.max(lo,Math.min(hi,me.pitch));}
     $('cross').hidden=paintMode||!(fp||document.pointerLockElement===canvas);
-    if(paintMode){const cs=s/.72;camAt((me.climb&&me.climb.ceil)?me.y-1*cs:me.y+1*cs,pYaw,pPitch,pDist*cs);}
+    if(gh){camera.position.set(me.x,me.y,me.z);{const cp=Math.cos(me.pitch);camera.lookAt(me.x-Math.sin(me.yaw)*cp,me.y-Math.sin(me.pitch),me.z-Math.cos(me.yaw)*cp);}}
+    else if(paintMode){const cs=s/.72;camAt((me.climb&&me.climb.ceil)?me.y-1*cs:me.y+1*cs,pYaw,pPitch,pDist*cs);}
     else if(fp){me.eyeH=(me.eyeH==null?2.2:me.eyeH)+((prone?.75:2.2)-(me.eyeH==null?2.2:me.eyeH))*(1-Math.exp(-12*dt));const ey=me.y+me.eyeH*s,cp=Math.cos(me.pitch);camera.position.set(me.x,ey,me.z);
       camera.lookAt(me.x-Math.sin(me.yaw)*cp,ey-Math.sin(me.pitch),me.z-Math.cos(me.yaw)*cp);}
     else{const cs=Math.max(.5,s/.72);camAt((me.climb&&me.climb.ceil)?me.y-.55:1.4*cs+me.y*.6,me.yaw,me.pitch,4*cs*camZoom);}
-    plight.position.set(me.x,2.6,me.z);updListener();
+    plight.position.set(me.x,gh?me.y+.6:2.6,me.z);updListener();updGhostMarks(gh);updTouchUI(gh);
     {const on=canWhistle(),gg=$('whGauge');gg.style.display=on?'block':'none';$('whBtn').hidden=!on;
       if(on){const pr=Math.min(1,(now-whLast)/(WH_SEC*1000));$('whArc').setAttribute('stroke-dashoffset',(150.8*(1-pr)).toFixed(1));$('whArc').setAttribute('stroke',`hsl(${Math.round(120*(1-pr))},90%,52%)`);}}
-    updWhDir(now);if(IS_TOUCH)mobVis();
+    updWhDir(now);
     const k=1-Math.exp(-12*dt);
     clones.forEach(c=>{stepPose(c.av,dt);updShadow(c.av);});
     others.forEach(o=>{const r=o.av.root;r.scale.setScalar(scaleOf(o.role));o.av.moving=!(now<snapT)&&Math.hypot(o.x-r.position.x,o.z-r.position.z)>.06;
